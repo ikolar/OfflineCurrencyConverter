@@ -366,3 +366,141 @@ For an air-gapped downstream environment, treat each dated CSV as an immutable
 reference-data package. The filename itself identifies the snapshot date. Keep
 the original transaction amount/currency and the rate/snapshot used for each
 conversion so that later backfills are auditable.
+
+## Conversion library
+
+Use the latest local CSV snapshot without network requests:
+
+```python
+from crypto_exchangerate import convert, Converter, UnknownCurrencyError, RateNotFoundError
+
+amount = convert(100, "USD", "EUR", "1.1.2026", 10)
+# Returns Decimal: 100 / the closest available USD-per-EUR rate.
+
+amount = convert(100, "JPY", "USD", "2026-01-01", 10)
+# Cross-converts via EUR: 100 / JPY-per-EUR * USD-per-EUR.
+
+amount = convert(100, "USD", "EUR")        # Yesterday, +/-10 days
+amount = convert(100, "USD", "EUR", None)  # Today, +/-10 days
+
+# Reuse a loaded snapshot for multiple conversions:
+converter = Converter(output_dir="output")
+amount = converter.convert(100, "USD", "EUR", "2026-01-01", 10)
+```
+
+`convert(amount, from_currency, to_currency, transaction_date, date_window)`
+accepts currency symbols (case insensitive), a finite numeric amount, and a
+non-negative integer window in calendar days. The window defaults to 10 and is
+inclusive in both directions; zero requires an exact date. Dates accept Python
+`date`/`datetime` objects, `YYYY-MM-DD`, or `D.M.YYYY` strings. Omitted dates mean
+yesterday; explicit `None` means today, using Europe/Amsterdam. Datetimes use
+their calendar date as supplied.
+
+The nearest usable observation wins; equal distances prefer the earlier date.
+Cross-conversions require valid rates for both currencies **on the same date**.
+Blank, `ERROR`, non-finite, zero and negative rates are skipped. EUR has an
+implicit rate of 1. Known same-currency conversions return the amount unchanged.
+Results use `Decimal` arithmetic with the active decimal context and no currency
+rounding; use string or `Decimal` amounts to preserve input precision.
+
+`UnknownCurrencyError` means a symbol is absent from the snapshot (EUR is always
+known). `RateNotFoundError` means no snapshot exists or no suitable observation
+exists within the window; the error identifies currencies without rates. A
+historical currency such as SIT may be known yet have no rate near a recent
+transaction date. Invalid arguments raise `ValueError`.
+
+By default, the library reads the newest snapshot across local `output/`
+and the package’s bundled data. Both `convert` and `Converter` accept
+`rates_path="path/to/snapshot.csv"` or `output_dir="path/to/output"` as keyword
+arguments. Source checkouts need a generated or downloaded snapshot; published packages
+include one. Conversion does not refresh rates.
+
+## Build and publish a dated Python package
+
+Install release tooling, then build and validate locally:
+
+```sh
+python -m pip install -r requirements-release.txt
+python publish_package.py
+```
+
+The script first runs the fetcher for today (Europe/Amsterdam). A nonzero exit,
+a missing current snapshot, or any `ERROR` download cells aborts the release
+before building or uploading. Ordinary blank observations, such as weekend fiat
+rates, remain allowed. Once fetching succeeds, it stages the package code, bundled asset configuration,
+and **only the newest dated CSV** from `output/`. It builds a wheel and source
+archive, then runs `twine check --strict`. Artifacts go into
+`dist/YYYY.MM.DD/`. Source files are not modified. Excel files, caches, tests,
+and credentials are excluded. The build date uses Europe/Amsterdam and can be
+overridden with `--date 2026-11-03`. `--output-dir` selects the snapshot directory;
+`--dist-dir` selects the artifact root. Existing release directories are rejected
+so old artifacts cannot accidentally be uploaded.
+
+To build, check, and upload to PyPI, configure a PyPI API token through Twine
+(e.g. `TWINE_USERNAME=__token__` and `TWINE_PASSWORD` supplied securely through
+your environment), then run:
+
+```sh
+python publish_package.py --publish --dist-dir publish-dist
+# Or test the release against TestPyPI using a TestPyPI token:
+python publish_package.py --publish --repository testpypi --dist-dir test-dist
+```
+
+The distribution name is `crypto-exchangerate`; your PyPI account must be allowed
+to publish under that name. Authentication and upload errors fail the script.
+Never commit API tokens. Without `--publish`, nothing is uploaded. PyPI versions
+cannot be overwritten, so this scheme permits one release per calendar date.
+The requested date version `2026.11.03` is normalized by Python packaging tools
+to `2026.11.3`; these identify the same release.
+
+After publication:
+
+```sh
+pip install crypto-exchangerate==2026.11.3
+```
+
+```python
+from crypto_exchangerate import convert
+amount = convert(100, "USD", "EUR", "2026-01-01", 10)
+```
+
+With no explicit data path, conversion selects the newest filename date across
+local `output/` and the installed bundled data. An explicit `output_dir` or
+`rates_path` uses only that location. Every release fetches fresh rates before building. `--date` changes the package
+version only; the fetch still uses today. Check the snapshot filename printed
+by the script. For environments with build tools already installed,
+`--no-isolation` avoids downloading them into a separate build environment.
+
+### Publish through GitHub Actions
+
+`.github/workflows/publish-pypi.yml` provides a manual **Publish Python package to
+PyPI** workflow. It tests the code, runs the mandatory fetch-and-build script,
+and hands checked artifacts to a separate publishing job. Failed fetching,
+`ERROR` cells, tests, or validation prevent publication. Only the default branch
+can publish. The workflow has no push or pull-request trigger.
+
+Use PyPI **Trusted Publishing** so GitHub needs no stored PyPI password or API
+token. Configure these once:
+
+1. Push this workflow and the packaging code to your GitHub repository.
+2. In repository **Settings → Environments**, create an environment named `pypi`.
+   Restrict deployments to the default branch.
+3. In PyPI, open the project's **Publishing** settings and add a GitHub publisher.
+   For a new project, use **Your account → Publishing → Add a new pending publisher**.
+   Enter your actual GitHub owner and repository, workflow filename
+   `publish-pypi.yml`, and environment name `pypi`. For a pending publisher,
+   use project name `crypto-exchangerate` (the name must be available).
+4. Keep the fetcher's optional `CMC_API_KEY` in repository **Settings → Secrets
+   and variables → Actions → New repository secret**. It is used during fetching;
+   the PyPI publishing job does not receive it.
+5. Open **Actions → Publish Python package to PyPI → Run workflow**, selecting
+   the default branch.
+
+GitHub supplies a short-lived identity token to PyPI during publishing. No
+`PYPI_API_TOKEN` secret is needed. A second publication of the same date version
+fails because PyPI releases cannot be overwritten. Artifacts remain downloadable
+from the successful build job for seven days even if publishing fails.
+
+If your repository name or package name differs from the examples, use your
+actual repository in the PyPI publisher settings and update `pyproject.toml`
+and the workflow's project URL if you rename the distribution.

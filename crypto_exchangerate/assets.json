@@ -1,0 +1,429 @@
+{
+  "fiat": [
+    {
+      "symbol": "USD",
+      "name": "US dollar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html"
+    },
+    {
+      "symbol": "JPY",
+      "name": "Japanese yen",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-jpy.en.html"
+    },
+    {
+      "symbol": "BGN",
+      "name": "Bulgarian lev",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-bgn.en.html"
+    },
+    {
+      "symbol": "CYP",
+      "name": "Cyprus pound",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-cyp.en.html"
+    },
+    {
+      "symbol": "CZK",
+      "name": "Czech koruna",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-czk.en.html"
+    },
+    {
+      "symbol": "DKK",
+      "name": "Danish krone",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-dkk.en.html"
+    },
+    {
+      "symbol": "EEK",
+      "name": "Estonian kroon",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-eek.en.html"
+    },
+    {
+      "symbol": "GBP",
+      "name": "UK pound sterling",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-gbp.en.html"
+    },
+    {
+      "symbol": "HUF",
+      "name": "Hungarian forint",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-huf.en.html"
+    },
+    {
+      "symbol": "LTL",
+      "name": "Lithuanian litas",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-ltl.en.html"
+    },
+    {
+      "symbol": "LVL",
+      "name": "Latvian lats",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-lvl.en.html"
+    },
+    {
+      "symbol": "MTL",
+      "name": "Maltese lira",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-mtl.en.html"
+    },
+    {
+      "symbol": "PLN",
+      "name": "Polish zloty",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-pln.en.html"
+    },
+    {
+      "symbol": "ROL",
+      "name": "Romanian leu (old)",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-rol.en.html"
+    },
+    {
+      "symbol": "RON",
+      "name": "Romanian leu",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-ron.en.html"
+    },
+    {
+      "symbol": "SEK",
+      "name": "Swedish krona",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-sek.en.html"
+    },
+    {
+      "symbol": "SIT",
+      "name": "Slovenian tolar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-sit.en.html"
+    },
+    {
+      "symbol": "SKK",
+      "name": "Slovak koruna",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-skk.en.html"
+    },
+    {
+      "symbol": "CHF",
+      "name": "Swiss franc",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-chf.en.html"
+    },
+    {
+      "symbol": "ISK",
+      "name": "Iceland krona",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-isk.en.html"
+    },
+    {
+      "symbol": "NOK",
+      "name": "Norwegian krone",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-nok.en.html"
+    },
+    {
+      "symbol": "HRK",
+      "name": "Croatian kuna",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-hrk.en.html"
+    },
+    {
+      "symbol": "RUB",
+      "name": "Russian rouble",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-rub.en.html"
+    },
+    {
+      "symbol": "TRL",
+      "name": "Turkish lira (old)",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-trl.en.html"
+    },
+    {
+      "symbol": "TRY",
+      "name": "Turkish lira",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-try.en.html"
+    },
+    {
+      "symbol": "AUD",
+      "name": "Australian dollar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-aud.en.html"
+    },
+    {
+      "symbol": "BRL",
+      "name": "Brazilian real",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-brl.en.html"
+    },
+    {
+      "symbol": "CAD",
+      "name": "Canadian dollar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-cad.en.html"
+    },
+    {
+      "symbol": "CNY",
+      "name": "Chinese yuan renminbi",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-cny.en.html"
+    },
+    {
+      "symbol": "HKD",
+      "name": "Hong Kong dollar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-hkd.en.html"
+    },
+    {
+      "symbol": "IDR",
+      "name": "Indonesian rupiah",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-idr.en.html"
+    },
+    {
+      "symbol": "ILS",
+      "name": "Israeli shekel",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-ils.en.html"
+    },
+    {
+      "symbol": "INR",
+      "name": "Indian rupee",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-inr.en.html"
+    },
+    {
+      "symbol": "KRW",
+      "name": "Korean won (Republic)",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-krw.en.html"
+    },
+    {
+      "symbol": "MXN",
+      "name": "Mexican peso",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-mxn.en.html"
+    },
+    {
+      "symbol": "MYR",
+      "name": "Malaysian ringgit",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-myr.en.html"
+    },
+    {
+      "symbol": "NZD",
+      "name": "New Zealand dollar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-nzd.en.html"
+    },
+    {
+      "symbol": "PHP",
+      "name": "Philippine peso",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-php.en.html"
+    },
+    {
+      "symbol": "SGD",
+      "name": "Singapore dollar",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-sgd.en.html"
+    },
+    {
+      "symbol": "THB",
+      "name": "Thai baht",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-thb.en.html"
+    },
+    {
+      "symbol": "ZAR",
+      "name": "South African rand",
+      "ecb_url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip",
+      "ecb_rates_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-zar.en.html"
+    }
+  ],
+  "major_cryptocurrencies": [
+    {
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "cmc_id": 1,
+      "first_historical_date": "2010-07-13",
+      "cmc_url": "https://coinmarketcap.com/currencies/bitcoin/"
+    },
+    {
+      "symbol": "ETH",
+      "name": "Ethereum",
+      "cmc_id": 1027,
+      "first_historical_date": "2015-08-07",
+      "cmc_url": "https://coinmarketcap.com/currencies/ethereum/"
+    },
+    {
+      "symbol": "BNB",
+      "name": "BNB",
+      "cmc_id": 1839,
+      "first_historical_date": "2017-07-25",
+      "cmc_url": "https://coinmarketcap.com/currencies/bnb/"
+    },
+    {
+      "symbol": "XRP",
+      "name": "XRP",
+      "cmc_id": 52,
+      "first_historical_date": "2013-08-04",
+      "cmc_url": "https://coinmarketcap.com/currencies/xrp/"
+    },
+    {
+      "symbol": "SOL",
+      "name": "Solana",
+      "cmc_id": 5426,
+      "first_historical_date": "2020-04-10",
+      "cmc_url": "https://coinmarketcap.com/currencies/solana/"
+    },
+    {
+      "symbol": "DOGE",
+      "name": "Dogecoin",
+      "cmc_id": 74,
+      "first_historical_date": "2013-12-15",
+      "cmc_url": "https://coinmarketcap.com/currencies/dogecoin/"
+    },
+    {
+      "symbol": "TRX",
+      "name": "TRON",
+      "cmc_id": 1958,
+      "first_historical_date": "2017-09-13",
+      "cmc_url": "https://coinmarketcap.com/currencies/tron/"
+    },
+    {
+      "symbol": "ADA",
+      "name": "Cardano",
+      "cmc_id": 2010,
+      "first_historical_date": "2017-10-01",
+      "cmc_url": "https://coinmarketcap.com/currencies/cardano/"
+    },
+    {
+      "symbol": "HYPE",
+      "name": "Hyperliquid",
+      "cmc_id": 32196,
+      "first_historical_date": "2024-11-29",
+      "cmc_url": "https://coinmarketcap.com/currencies/hyperliquid/"
+    },
+    {
+      "symbol": "XLM",
+      "name": "Stellar",
+      "cmc_id": 512,
+      "first_historical_date": "2014-08-05",
+      "cmc_url": "https://coinmarketcap.com/currencies/stellar/"
+    },
+    {
+      "symbol": "BCH",
+      "name": "Bitcoin Cash",
+      "cmc_id": 1831,
+      "first_historical_date": "2017-07-23",
+      "cmc_url": "https://coinmarketcap.com/currencies/bitcoin-cash/"
+    },
+    {
+      "symbol": "LINK",
+      "name": "Chainlink",
+      "cmc_id": 1975,
+      "first_historical_date": "2017-09-20",
+      "cmc_url": "https://coinmarketcap.com/currencies/chainlink/"
+    },
+    {
+      "symbol": "SUI",
+      "name": "Sui",
+      "cmc_id": 20947,
+      "first_historical_date": "2023-05-03",
+      "cmc_url": "https://coinmarketcap.com/currencies/sui/"
+    },
+    {
+      "symbol": "AVAX",
+      "name": "Avalanche",
+      "cmc_id": 5805,
+      "first_historical_date": "2020-09-22",
+      "cmc_url": "https://coinmarketcap.com/currencies/avalanche/"
+    },
+    {
+      "symbol": "HBAR",
+      "name": "Hedera",
+      "cmc_id": 4642,
+      "first_historical_date": "2019-09-17",
+      "cmc_url": "https://coinmarketcap.com/currencies/hedera/"
+    },
+    {
+      "symbol": "LTC",
+      "name": "Litecoin",
+      "cmc_id": 2,
+      "first_historical_date": "2013-04-28",
+      "cmc_url": "https://coinmarketcap.com/currencies/litecoin/"
+    },
+    {
+      "symbol": "TON",
+      "name": "Toncoin",
+      "cmc_id": 11419,
+      "first_historical_date": "2021-08-26",
+      "cmc_url": "https://coinmarketcap.com/currencies/gram/"
+    },
+    {
+      "symbol": "SHIB",
+      "name": "Shiba Inu",
+      "cmc_id": 5994,
+      "first_historical_date": "2020-08-01",
+      "cmc_url": "https://coinmarketcap.com/currencies/shiba-inu/"
+    },
+    {
+      "symbol": "DOT",
+      "name": "Polkadot",
+      "cmc_id": 6636,
+      "first_historical_date": "2020-08-20",
+      "cmc_url": "https://coinmarketcap.com/currencies/polkadot-new/"
+    },
+    {
+      "symbol": "AAVE",
+      "name": "Aave",
+      "cmc_id": 7278,
+      "first_historical_date": "2020-10-04",
+      "cmc_url": "https://coinmarketcap.com/currencies/aave/"
+    }
+  ],
+  "stablecoins": [
+    {
+      "symbol": "USDT",
+      "name": "Tether USDt",
+      "cmc_id": 825,
+      "first_historical_date": "2015-02-25",
+      "cmc_url": "https://coinmarketcap.com/currencies/tether/"
+    },
+    {
+      "symbol": "USDC",
+      "name": "USDC",
+      "cmc_id": 3408,
+      "first_historical_date": "2018-10-08",
+      "cmc_url": "https://coinmarketcap.com/currencies/usd-coin/"
+    },
+    {
+      "symbol": "USDE",
+      "name": "Ethena USDe",
+      "cmc_id": 29470,
+      "first_historical_date": "2023-12-31",
+      "cmc_url": "https://coinmarketcap.com/currencies/ethena-usde/"
+    },
+    {
+      "symbol": "USDS",
+      "name": "USDS",
+      "cmc_id": 33039,
+      "first_historical_date": "2024-09-19",
+      "cmc_url": "https://coinmarketcap.com/currencies/usds/"
+    },
+    {
+      "symbol": "DAI",
+      "name": "Dai",
+      "cmc_id": 4943,
+      "first_historical_date": "2019-11-22",
+      "cmc_url": "https://coinmarketcap.com/currencies/multi-collateral-dai/"
+    }
+  ]
+}

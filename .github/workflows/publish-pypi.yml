@@ -1,0 +1,84 @@
+name: Publish Python package to PyPI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-pypi
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Only publish code from the repository's default branch.
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-release.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt -r requirements-release.txt
+
+      - name: Run tests
+        run: python -m unittest discover -v
+
+      - name: Restore ECB downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/ecb
+          key: ecb-zip-v1-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ecb-zip-v1-${{ runner.os }}-
+
+      - name: Fetch fresh rates, build and validate distributions
+        env:
+          CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
+        run: python publish_package.py
+
+      - name: Save checked distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: pypi-distributions
+          path: |
+            dist/*/*.whl
+            dist/*/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/crypto-exchangerate/
+    permissions:
+      id-token: write
+    steps:
+      - name: Download checked distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: pypi-distributions
+          path: downloaded-dist/
+
+      - name: Collect distributions
+        run: |
+          mkdir publish-dist
+          find downloaded-dist -type f \( -name '*.whl' -o -name '*.tar.gz' \) -exec cp {} publish-dist/ \;
+
+      - name: Publish using PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: publish-dist/

@@ -1,0 +1,4 @@
+build>=1.2,<2
+twine>=6,<8
+setuptools>=77
+wheel>=0.45
