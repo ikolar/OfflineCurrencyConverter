@@ -120,3 +120,9 @@ def convert(amount, from_currency: str, to_currency: str,
     return Converter(rates_path, output_dir=output_dir).convert(
         amount, from_currency, to_currency, transaction_date, date_window,
     )
+
+
+def supported_currencies(*, rates_path: str | Path | None = None,
+                         output_dir: str | Path | None = None) -> list[str]:
+    """Return sorted snapshot symbols, including EUR; dates may have rate gaps."""
+    return sorted(Converter(rates_path, output_dir=output_dir).currencies)

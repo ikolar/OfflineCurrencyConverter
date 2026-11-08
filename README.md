@@ -403,6 +403,27 @@ implicit rate of 1. Known same-currency conversions return the amount unchanged.
 Results use `Decimal` arithmetic with the active decimal context and no currency
 rounding; use string or `Decimal` amounts to preserve input precision.
 
+For fiat amounts, keep full precision during conversion and round the final
+result to the output currency's minor unit. EUR and USD use two decimal places
+(cents), while some currencies use zero or three. The library leaves rounding
+to the caller so you can choose the currency precision and rounding rule.
+
+For example, round a USD-to-EUR result to the nearest cent using `ROUND_HALF_UP`
+(halfway values round away from zero):
+
+```python
+from decimal import Decimal, ROUND_HALF_UP
+from crypto_exchangerate import convert
+
+eur = convert("100", "USD", "EUR", "2026-11-02", 0)
+eur = eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+print(eur)
+```
+
+Formatting with `f"{eur:.2f}"` rounds only the displayed text; `quantize()`
+returns a rounded `Decimal` value. Formatting uses the active decimal context's
+rounding rule, so use `quantize()` when you need an explicit rule.
+
 `UnknownCurrencyError` means a symbol is absent from the snapshot (EUR is always
 known). `RateNotFoundError` means no snapshot exists or no suitable observation
 exists within the window; the error identifies currencies without rates. A
@@ -416,6 +437,60 @@ arguments. Source checkouts need a generated or downloaded snapshot; published p
 include one. Conversion does not refresh rates.
 
 ## Build and publish a dated Python package
+
+### Daily GitHub Actions wheel
+
+The **Update ECB + crypto rates** workflow also tests the code, builds a wheel
+with the generated CSV snapshot and Python conversion wrapper, and uploads it
+as a workflow artifact named `crypto-exchangerate-wheel-RUN_ID-RUN_ATTEMPT`.
+It also commits the wheel to `output/` alongside the CSV and Excel snapshot.
+The wheel version follows the snapshot date (for example, a snapshot dated
+`2026.11.08` produces `crypto_exchangerate-2026.11.8-py3-none-any.whl`;
+Python packaging normalizes leading zeros in version numbers).
+Download and unzip the artifact from the workflow run, then install the wheel:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install /path/to/crypto_exchangerate-YYYY.M.D-py3-none-any.whl
+
+crypto-exchangerate currencies
+crypto-exchangerate convert 100 USD EUR --date 2026-11-02 --date-window 0
+# The same commands work through python -m crypto_exchangerate.
+```
+
+Conversion and currency listing use local or bundled data without network
+requests. Both commands accept `--rates-path /path/to/snapshot.csv` or
+`--output-dir /path/to/output`. Conversion prints an unrounded decimal amount;
+see the rounding example above. With no date, conversion uses yesterday and a
+default window of +/-10 days. The currency list includes EUR and every snapshot
+symbol, including historical currencies; a listed currency may lack rates for
+the requested date. Python callers can use:
+
+```python
+from crypto_exchangerate import convert, supported_currencies
+
+print(supported_currencies())
+print(convert("100", "USD", "EUR", "2026-11-02", 0))
+```
+
+To build the same wheel locally from an existing snapshot without fetching:
+
+```sh
+python -m pip install -r requirements-release.txt
+python build_wheel.py
+```
+
+This build uses the newest CSV in `output/`, versions the package by that
+snapshot's filename date, and writes to `dist/YYYY.MM.DD/`. Use `--output-dir`
+or `--dist-dir` to choose other directories. Existing build directories are
+rejected. The wheel preserves blanks and `ERROR` cells from the generated data;
+conversion skips unusable rates. It bundles only the newest CSV, not Excel files.
+Dependencies must be installed from an accessible package index or wheelhouse.
+Workflow artifacts are retained for 90 days; copy approved wheels to a private
+GitHub Release or corporate package index for long-term installation.
+
+### PyPI release
 
 Install release tooling, then build and validate locally:
 

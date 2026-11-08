@@ -1,5 +1,7 @@
 """Conversion lookup, cross rates, and public API behavior."""
 import csv
+from contextlib import redirect_stdout, redirect_stderr
+from io import StringIO
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -7,7 +9,8 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from crypto_exchangerate import Converter, convert, UnknownCurrencyError, RateNotFoundError
+from crypto_exchangerate import Converter, convert, supported_currencies, UnknownCurrencyError, RateNotFoundError
+from crypto_exchangerate.cli import main
 
 
 class ConversionTests(unittest.TestCase):
@@ -74,6 +77,22 @@ class ConversionTests(unittest.TestCase):
         with TemporaryDirectory() as empty:
             with self.assertRaises(RateNotFoundError):
                 Converter(output_dir=empty)
+
+    def test_supported_currencies_and_offline_commands(self):
+        expected = ['BTC', 'EUR', 'JPY', 'SIT', 'USD']
+        self.assertEqual(supported_currencies(rates_path=self.path), expected)
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(['currencies', '--rates-path', str(self.path)]), 0)
+        self.assertEqual(output.getvalue().splitlines(), expected)
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(['convert', '100', 'USD', 'EUR', '--date', '2026-01-01',
+                                   '--date-window', '0', '--rates-path', str(self.path)]), 0)
+        self.assertEqual(output.getvalue().strip(), '50')
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit) as failure:
+            main(['convert', '100', 'XYZ', 'EUR', '--rates-path', str(self.path)])
+        self.assertEqual(failure.exception.code, 2)
 
 
 if __name__ == '__main__':

@@ -1,11 +1,45 @@
 """Command-line interface for rate generation."""
 import argparse
+import sys
 from pathlib import Path
 from . import core
+from .conversion import Converter
+
+
+def conversion_main(argv) -> int:
+    parser = argparse.ArgumentParser(prog="crypto-exchangerate")
+    commands = parser.add_subparsers(dest="command", required=True)
+    conversion = commands.add_parser("convert", help="Convert using local or bundled rates (offline)")
+    conversion.add_argument("amount")
+    conversion.add_argument("from_currency")
+    conversion.add_argument("to_currency")
+    conversion.add_argument("--date", help="Transaction date; defaults to yesterday in Europe/Amsterdam")
+    conversion.add_argument("--date-window", type=int, default=10)
+    currencies = commands.add_parser("currencies", help="List snapshot symbols, including EUR")
+    for command in (conversion, currencies):
+        source = command.add_mutually_exclusive_group()
+        source.add_argument("--rates-path", type=Path)
+        source.add_argument("--output-dir", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        converter = Converter(args.rates_path, output_dir=args.output_dir)
+        if args.command == "currencies":
+            print("\n".join(sorted(converter.currencies)))
+        else:
+            kwargs = {"date_window": args.date_window}
+            if args.date is not None:
+                kwargs["transaction_date"] = args.date
+            print(converter.convert(args.amount, args.from_currency, args.to_currency, **kwargs))
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
+    return 0
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser()
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in {"convert", "currencies"}:
+        return conversion_main(argv)
+    parser = argparse.ArgumentParser(epilog="Offline commands: convert AMOUNT FROM TO [--date YYYY-MM-DD]; currencies. Use COMMAND --help for options.")
     parser.add_argument("--output-dir", type=Path, default=core.OUTPUT_DIR)
     parser.add_argument("--ecb-cache-dir", type=Path, default=core.ECB_CACHE_DIR)
     parser.add_argument("--force", action="store_true", help="Redownload ECB ZIPs regardless of cache freshness.")
