@@ -1,724 +1,252 @@
 # OfflineCurrencyCoverter
 
-Offline historical fiat and cryptocurrency conversion using daily ECB and
-CoinMarketCap snapshots. Each wheel bundles a dated CSV, so conversion and rate
-lookup work without network access. Use `decimal=True` for `Decimal` results without monetary rounding.
+Historical fiat and cryptocurrency conversion for offline Python applications.
+Requires Python 3.10 or newer.
 
-## Install and convert
+OfflineCurrencyCoverter follows the familiar
+[CurrencyConverter API](https://github.com/alexprengere/currencyconverter),
+including `CurrencyConverter`, `convert()`, `date=`, currency bounds, and
+optional fallback settings. It extends this interface with cryptocurrency
+coverage, configurable date windows, and exchange-rate quotes with snapshot
+metadata. See [API compatibility](#api-compatibility) for supported behavior.
 
-Download the wheel from this repository's `output/` folder, then install it in
-Python 3.10 or newer:
+**Exchange-rate data is included in every package.** Automated daily builds
+refresh the bundled historical dataset and produce a date-versioned wheel.
+Applications receive updated rates by installing a newer package build;
+conversion and rate lookup never require access to external data services.
+This supports air-gapped deployments using an internal Python package index
+or a local wheelhouse.
+
+## Currency data
+
+Fiat reference rates come from the European Central Bank. Cryptocurrency and
+stablecoin rates come from CoinMarketCap. All source rates are stored as units
+per EUR, enabling conversion between supported currencies through EUR.
+
+Each wheel contains one cumulative CSV snapshot. Its calendar starts on
+1999-01-04 and ends on the day before the snapshot's run date. Individual
+currencies have different periods of coverage. Crypto uses completed daily
+closing prices; unfinished current-day observations are excluded.
+
+A scheduled GitHub Action generates updated data and a wheel daily at
+16:30 Europe/Amsterdam. Successful builds are committed to [`output/`](output/)
+and made available as workflow artifacts. Versions follow the snapshot date:
+`2026.11.9` identifies the November 9, 2026 snapshot. Publication to public PyPI
+is a separate, manually triggered workflow.
+
+Fiat observations may be absent on weekends and holidays. Missing or failed
+source observations remain unavailable until a subsequent update obtains them.
+The installed dataset stays fixed until the package or local snapshot is
+replaced; the converter does not refresh it automatically.
+
+## Installation
+
+Download a wheel from [`output/`](output/), then install it in a virtual environment:
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/offlinecurrencycoverter-YYYY.M.D-py3-none-any.whl
+python -m pip install /path/to/offlinecurrencycoverter-2026.11.9-py3-none-any.whl
 ```
+
+For air-gapped systems, make the wheel and its dependencies available through
+an internal PyPI mirror or a local wheelhouse. For example:
+
+```sh
+python -m pip install --no-index --find-links=/path/to/wheelhouse OfflineCurrencyCoverter
+```
+
+The wheel bundles the rates, but its dependencies must also be installed.
+To replace an installed build with an updated wheel of the same version, use
+`python -m pip install --force-reinstall /path/to/package.whl`.
+
+## Python API
 
 Create a converter once and reuse it:
 
 ```python
+from offline_currency_coverter import CurrencyConverter
+
+c = CurrencyConverter()
+euros = c.convert(100, "USD")          # EUR is the default destination.
+yen = c.convert(100, "USD", "JPY")    # Latest common observation.
+```
+
+Choose a historical date with `date=`:
+
+```python
 from datetime import date
-from decimal import Decimal
+
+amount = c.convert(100, "USD", "EUR", date=date(2026, 11, 2))
+```
+
+Omitting `date`, or passing `None`, uses the latest common observation in the
+loaded snapshot. An explicit date requires an exact observation unless a date
+window or fallback is enabled. Dates also accept `datetime` objects,
+`YYYY-MM-DD` strings, and `D.M.YYYY` strings.
+
+### Decimal amounts and rounding
+
+Conversions return floats by default. Enable `decimal=True` for `Decimal`
+results, and pass string or `Decimal` amounts to preserve input precision:
+
+```python
+from decimal import Decimal, ROUND_HALF_UP
 from offline_currency_coverter import CurrencyConverter
 
 c = CurrencyConverter(decimal=True)
-euros = c.convert("100", "USD", date=date(2026, 11, 2))  # EUR is the default target.
-yen = c.convert("100", "USD", "JPY", date=date(2026, 11, 2))
+eur = c.convert("100", "USD", date="2026-11-02")
+eur = eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+```
 
-quote = c.get_rate("USD", "EUR", date=date(2026, 11, 2), date_window=30)
+The converter does not apply monetary rounding. Round the final amount to the
+destination currency's minor unit: EUR and USD use two decimal places, while
+some currencies use zero or three. Formatting with `f"{eur:.2f}"` changes only
+the displayed text; `quantize()` returns a rounded `Decimal` value.
+
+### Date windows
+
+Pass `date_window` to select the nearest usable observation within an inclusive
+window of calendar days before or after the requested date:
+
+```python
+amount = c.convert("100", "USD", "EUR", date="2026-11-02", date_window=30)
+```
+
+An equally distant pair of observations resolves to the earlier date. Both
+currencies must have valid rates on the same observation date. Zero requires
+an exact match. An explicit window overrides fallback settings, including
+out-of-range fallback, and raises `RateNotFoundError` if no match exists.
+
+Applications requiring a 30-day policy must explicitly pass their selected
+`date` and `date_window=30`.
+
+### Fallbacks
+
+Enable last-known fallback for missing dates within the currencies' date bounds:
+
+```python
+c = CurrencyConverter(fallback_on_missing_rate=True, decimal=True)
+```
+
+Enable boundary fallback for requested dates outside the available range:
+
+```python
+c = CurrencyConverter(
+    fallback_on_missing_rate=True,
+    fallback_on_wrong_date=True,
+    decimal=True,
+)
+```
+
+Last-known fallback selects a common observation on or before the requested
+date. Boundary fallback uses the first or last common available observation.
+The supported method is `fallback_on_missing_rate_method="last_known"`;
+linear interpolation is not implemented. All quotes identify actual observations.
+
+### Rate quotes
+
+`get_rate()` returns an immutable `RateQuote` containing:
+
+| Field | Meaning |
+| --- | --- |
+| `rate` | `Decimal` multiplier: destination units per one source unit |
+| `rate_date` | Actual selected observation date, as `datetime.date` |
+| `snapshot_version` | Snapshot filename date, such as `"2026.11.09"`; `None` for unrecognized custom filenames |
+
+```python
+from decimal import Decimal
+
+quote = c.get_rate("USD", "EUR", date="2026-11-02", date_window=30)
 euro_amount = Decimal("100") * quote.rate
 print(quote.rate_date, quote.snapshot_version)
+```
 
+The multiplier is destination-units-per-EUR divided by source-units-per-EUR.
+EUR has an implicit rate of 1. For identical supported currencies, the rate is
+1 and `rate_date` is the resolved requested date, without requiring a historical
+observation. The snapshot version describes the dataset, not per-observation
+source provenance.
+
+### Supported currencies and date bounds
+
+```python
 print(sorted(c.currencies))
 first_date, last_date = c.bounds["USD"]
 print(first_date, last_date)
 ```
 
-The interface follows the common calls of
-[CurrencyConverter](https://pypi.org/project/CurrencyConverter/), while this
-separate package is imported as `offline_currency_coverter` and also supports crypto.
+`currencies` includes EUR, fiat, crypto, and historical currency symbols present
+in the snapshot. A listed currency may have no rate for a particular date.
+`bounds` includes only currencies with usable observations. EUR bounds cover
+the snapshot calendar, although EUR identity conversions also work outside it.
 
-- `c.convert(amount, currency, new_currency="EUR", date=None)` defaults to EUR
-  and uses the latest common observation when `date` is omitted or `None`.
-- Like CurrencyConverter, amounts are returned as floats by default. Set
-  `decimal=True` to return `Decimal`; `get_rate()` always returns a `RateQuote`
-  containing a `Decimal` multiplier, actual `rate_date`, and snapshot version.
-- Pass `date_window=30` to either method for inclusive +/-30-day nearest-rate
-  lookup. This overrides fallback settings, including out-of-range fallback.
-  The closest common observation wins, with earlier dates winning ties.
-- Without a window, an explicit date requires an exact observation by default.
-  Enable `fallback_on_missing_rate=True` to select the last common observation
-  on or before a missing date within the currencies' bounds. Enable
-  `fallback_on_wrong_date=True` to use the first or last common observation for
-  dates outside the available range. Quotes report the actual selected date.
-- The fallback method is `last_known`. Linear interpolation is not implemented;
-  specifying `fallback_on_missing_rate_method="linear_interpolation"` raises
-  `ValueError`. Every returned quote identifies an actual observation.
-- `bounds` contains the first and last usable dates per currency;
-  currencies with no usable rates are omitted. EUR bounds cover the snapshot
-  calendar; EUR identity quotes work even outside those bounds.
-- `CurrencyConverter("/path/to/snapshot.csv")` loads a custom local CSV.
-  Its `currency_file=` keyword is also supported. URLs and ZIP inputs are not
-  supported. No lookup downloads data.
+### Custom data
 
-For example, enable the last-known fallback while preserving decimal arithmetic:
+Load an explicit local CSV, using the same units-per-EUR format:
 
 ```python
-c = CurrencyConverter(
-    fallback_on_missing_rate=True, fallback_on_wrong_date=True, decimal=True
-)
-quote = c.get_rate("USD", date="2026-11-07")
-print(quote.rate_date)  # Actual observation, potentially before the requested date.
+c = CurrencyConverter("/path/to/snapshot.csv", decimal=True)
+# Also accepted: CurrencyConverter(currency_file="/path/to/snapshot.csv")
 ```
 
-The existing `Converter`, module-level `convert()` and `get_rate()` preserve
-all their existing behavior: `transaction_date=` keyword, yesterday by default,
-explicit `None` for today, a default +/-10-day window, and `Decimal` amounts.
-The `CurrencyConverter` facade uses `date=` and latest-rate defaults to match
-the familiar API. Both interfaces share one offline observation lookup engine.
+By default, the newest filename-dated snapshot is selected across local
+`output/` and the package's bundled data. `output_dir=` restricts selection to
+a chosen directory. URL and ZIP inputs are not supported.
 
-For air-gapped deployment, install the wheel and its dependencies from your
-internal PyPI mirror or local wheelhouse. Runtime lookup requires no Internet
-access, ECB connection, or CoinMarketCap connection. Only the separate daily
-snapshot generation job downloads rates.
+### Exceptions
+
+- `UnknownCurrencyError`: a requested symbol is not supported by the snapshot.
+- `RateNotFoundError`: no snapshot or suitable observation is available.
+- `ValueError`: invalid amounts, dates, date windows, or unsupported fallback options.
+
+Blank, `ERROR`, zero, negative, and non-finite rates are never used for conversion.
 
 ## Command line
 
 ```sh
-offline-currency-coverter 100 USD --to EUR --date 2026-11-02
-offline-currency-coverter convert 100 USD --date 2026-11-02  # Default target: EUR
+offline-currency-coverter 100 USD --to EUR
+offline-currency-coverter 100 USD --to EUR --date 2026-11-02 --date-window 30
 offline-currency-coverter currencies
 ```
 
-Use `--date-window 30` for a +/-30-day lookup, or `--rates-path snapshot.csv`
-for an explicit local snapshot. With no date these commands use the latest
-common observation; an explicit date requires an exact rate unless you pass a
-window. These commands print unrounded amounts.
-The existing `python rates.py` command generates daily snapshots.
+The equivalent module command is `python -m offline_currency_coverter` followed
+by the same arguments. Use `--rates-path /path/to/snapshot.csv` for an explicit
+CSV. Commands use the latest common observation when no date is supplied;
+with `--date`, supply `--date-window` if an exact match is not required.
+Amounts are printed without monetary rounding.
 
-## Daily snapshots
+## API compatibility
 
-This repository generates matching cumulative CSV and Excel files every day:
+This package implements the common CurrencyConverter calling interface with
+offline fiat and crypto data. It is not a complete drop-in implementation:
+network sources, ZIP inputs, and linear interpolation are not supported. Rates
+for cross-currency conversion always come from the same observation date.
+`date_window` and `get_rate()` are additional capabilities.
 
-```text
-output/eurofxref_and_crypto_rates.YYYY.MM.DD.csv
-output/eurofxref_and_crypto_rates.YYYY.MM.DD.xlsx
-```
-
-Each snapshot contains **all dates from the ECB historical start (1999-01-04)
-through the day before the snapshot's run date**, newest first. The filename's
-date is the **run date**, using Europe/Amsterdam local time, not the last data date.
-
-### Completed days only
-
-Both CSV and Excel end yesterday. Crypto uses completed daily closing prices,
-not live intraday prices, so the unfinished current day is excluded for all
-currencies. At the daily 16:30 Europe/Amsterdam update on October 24, 2026, the
-files are named `eurofxref_and_crypto_rates.2026.10.24.csv` and `.xlsx`, and their
-newest data row is **2026-10-23**.
-
-Today's ECB fiat rates are also withheld until tomorrow's snapshot, even if
-already published. Weekend and holiday rows remain in the calendar: fiat stays
-blank when the ECB publishes no rate, while crypto is included when available.
-For example, Sunday's snapshot includes Saturday's crypto closing prices and
-blank Saturday fiat cells. Missing source observations can still leave gaps and
-are retried on later runs.
-
-`--run-date YYYY-MM-DD` overrides the run date and applies the same rule: data
-ends the preceding calendar day. Existing cached rows from the run date or later
-are excluded. The script logs the last data date when it creates the files.
-
-Both formats contain the same dates and currency columns, with no empty separator
-column. Excel uses a `Rates` sheet with numeric rates, real date cells displayed as
-`YYYY-MM-DD`, and two header rows: symbols followed by full currency names.
-Names link to currency-specific ECB rate pages or the exact CoinMarketCap page.
-Both header rows and the date column are frozen; filters use the name row.
-Data starts on row 3. Missing
-values stay blank and download failures remain the text `ERROR`. CSV files remain
-the cache used by subsequent daily runs. The daily action commits both formats.
-Both CSV and Excel display rates as plain decimals, never scientific notation,
-including small values such as BTC (`0.0000138166606522`, not `1.38166606522e-05`).
-CSV conversion expands exponent notation without rounding existing decimal digits;
-Excel cells retain their underlying numeric values.
-
-## Output semantics
-
-The file preserves the ECB convention consistently across fiat and crypto:
-
-> **each rate is the number of units of that currency/asset equal to 1 EUR**
-
-So:
-
-- `USD = 1.1205` means `1 EUR = 1.1205 USD`
-- `BTC = 0.0000143` means `1 EUR = 0.0000143 BTC`
-
-This consistency makes downstream conversion simple:
+The original `Converter`, module-level `convert()`, and module-level `get_rate()`
+remain available. They use `transaction_date=`, default to yesterday in
+Europe/Amsterdam, interpret explicit `None` as today, and default to a +/-10-day
+window. They always use `Decimal` amounts and rates:
 
 ```python
-amount_eur = amount_in_original_currency / rate
-```
-
-### Missing values
-
-- **Fiat blank**: ECB did not publish a reference rate for that calendar date
-  (typically weekends, TARGET/bank holidays, or a currency not yet/any longer
-  covered). Fiat values are **not carried forward**.
-- **Crypto blank**: the date is before CoinMarketCap's `first_historical_data`
-  for that coin, or CoinMarketCap genuinely returned no observation.
-- **Crypto `ERROR`**: the script attempted to obtain that crypto period but the
-  request failed or appeared to be blocked/rate-limited after three attempts.
-
-A later successful run retries both missing and `ERROR` crypto cells.
-Once a coin's historical start is known, cached cells before that date are
-cleared, including errors left by an earlier failed asset lookup.
-
-### USD retry when EUR history is missing
-
-EUR quotes are preferred. After the EUR download attempts, the script retries
-unresolved dates in USD when a valid **same-day ECB USD reference rate** exists.
-This applies to both the official API and the public website endpoint, including
-partial EUR responses and failed EUR requests. Existing cached rates and valid
-EUR observations are preserved.
-
-The output convention stays **coins per EUR**:
-
-```text
-coins per EUR = ECB USD per EUR / CoinMarketCap USD per coin
-```
-
-For example, an ECB rate of 1.0561 USD per EUR and a coin price of 20,000 USD
-produce 0.000052805 coins per EUR. This uses two reference sources, so the result
-may differ slightly from a direct CoinMarketCap EUR quote.
-
-ECB rates are never carried forward for this conversion. If the same-day USD
-reference rate is missing (such as weekends or holidays), no USD retry is made.
-If neither source returns an observation, the cell stays blank; a failed request
-leaves `ERROR`. Both are retried on later runs. The unfinished current day is
-excluded from the snapshot entirely.
-
-The USD retry repairs source gaps such as June 28–29, 2022, where CoinMarketCap's
-EUR history is missing observations present in its USD history. It runs during
-the normal daily update; older snapshot files are not rewritten automatically.
-
-## Why missed GitHub Actions runs are repaired automatically
-
-The script does **not** assume yesterday's Action succeeded.
-
-Every run:
-
-1. checks cached ECB historical and daily data against the publication schedule,
-   downloading missing, invalid, or stale files;
-2. combines the full historical data with the latest daily row;
-3. creates a complete daily calendar through yesterday;
-4. uses the latest existing output snapshot as a crypto cache;
-5. detects every missing/`ERROR` crypto date;
-6. downloads those missing crypto windows;
-7. writes a new cumulative snapshot.
-
-Therefore, if GitHub Actions fails for 10 days, the next successful run fills the
-10-day window rather than only downloading one day.
-
-## Asset configuration
-
-### Fiat metadata in `assets.json`
-
-The first group, `fiat`, describes the 41 currency columns in the ECB historical
-and daily exports, including discontinued currencies. Each entry contains its
-`symbol`, the full name from the ECB's official `CL_CURRENCY` code list,
-`ecb_url` (the shared daily ZIP download), and `ecb_rates_url` (its currency-specific
-ECB rate page, used by the Excel name hyperlink).
-
-This group is informational only. It does not trigger per-currency downloads,
-add rows or rate columns, or feed fiat entries into the CMC resolver. Fiat rates
-continue to come from the combined ECB exports and their existing cache.
-Additional sources may be integrated separately in future; adding metadata alone
-does not enable a new rate source. `add_asset.py` preserves this group and avoids
-using its symbols for new crypto column names.
-
-### Crypto assets
-
-The initial configured set is 20 major cryptocurrencies plus 5 major stablecoins
-in `assets.json`. Additional coins can be added by their unique CMC URL.
-
-### Add an asset by URL
-
-```bash
-python add_asset.py 'https://coinmarketcap.com/currencies/tontoken/'
-```
-
-The tool reads that specific CMC page to obtain its unique ID, canonical URL,
-current name/ticker, and first historical date. It never searches by name or
-ticker. It adds the coin to `major_cryptocurrencies` by default; use
-`--group stablecoins` for a stablecoin or `--config /path/to/assets.json` for
-another configuration. Existing records are preserved, and an already configured
-CMC ID is reported without adding a duplicate, even if its name or URL changed.
-
-`symbol` is the unique CSV/Excel column name. If a ticker is already in use, the
-new column becomes `TICKER_CMCID`. For example, adding TON Token (CMC 6890) creates
-`TON_6890` and leaves the existing `TON` column (Gram/former Toncoin, CMC 11419)
-unchanged. The original ticker is stored as `cmc_symbol`. Repeated names are
-allowed; output column names must be unique. Known fiat columns in the latest
-snapshot are also checked for collisions.
-
-Preview without editing the configuration, or choose a different column name:
-
-```bash
-python add_asset.py 'https://coinmarketcap.com/currencies/tontoken/' --dry-run
-python add_asset.py 'https://coinmarketcap.com/currencies/tontoken/' --symbol TON_TOKEN
-```
-
-Failed page downloads, invalid URLs, and missing historical metadata leave the
-configuration untouched. Config updates are written atomically. The next normal
-`rates.py` run fetches the new coin's history; existing snapshots are not rewritten
-by `add_asset.py`. Commit the changed `assets.json` to make the asset available to
-the scheduled GitHub action.
-
-Crypto assets specify `cmc_id` and `first_historical_date` in
-`assets.json`, verified against CoinMarketCap's asset metadata
-(`actualTimeStart`). Daily runs use these fixed IDs directly and make no asset
-map requests. Historical price downloads can still fail or be rate-limited;
-missing and `ERROR` cells are retried on later runs.
-
-IDs and start dates were verified on 2026-10-24 using CoinMarketCap's
-`/data-api/v3/cryptocurrency/detail?id=<cmc_id>` metadata endpoint. The `TON`
-output column retains its existing name and uses ID 11419, currently listed
-by CoinMarketCap as "Gram (prev. Toncoin)" (`GRAM`).
-
-On 2026-10-29, the TON column in the published CSV and Excel snapshots was
-rechecked and corrected against CMC ID 11419. Earlier cached values had come
-from the unrelated TON Token (ID 6890); changing the configured ID had not
-replaced those cached numbers. The repaired series uses the inverse of ID
-11419's daily EUR closing price, with USD/ECB conversion for June 28–29, 2022.
-Dates before its first historical observation (2021-08-26) are blank. The column
-name remains `TON`; values are coins per EUR. Other currency columns are unchanged.
-
-For newly added assets without both fields, the script falls back to the asset
-map, paginating to include newer assets and using the authenticated API when
-`CMC_API_KEY` is set. Add a verified ID and historical start date to keep new
-assets independent of that lookup too.
-
-### Recommended: official CoinMarketCap API
-
-Create a GitHub repository secret named:
-
-```text
-CMC_API_KEY
-```
-
-When present, the script uses CoinMarketCap's official historical quotes API and
-requests EUR conversion directly.
-
-**Important:** how far back the API actually allows you to query depends on your
-CoinMarketCap plan. The script asks for the full available range, but it cannot
-override plan limits.
-
-### Free fallback
-
-If `CMC_API_KEY` is absent, the script uses CoinMarketCap's public website
-historical-data endpoint. This endpoint is not the documented Pro API and may
-change or apply anti-bot controls.
-
-To reduce the chance of blocking, the script:
-
-- sends a descriptive User-Agent;
-- makes requests serially (no concurrency);
-- pauses between requests;
-- requests only missing periods;
-- uses moderate 180-day chunks;
-- retries at most three times with backoff;
-- uses explicit connect/read timeouts.
-
-If a crypto window is blocked or fails after the three attempts, the script does
-not fabricate or carry forward a rate: it writes `ERROR` for the affected crypto
-cells.
-
-## ECB behavior
-
-The ECB daily CSV can use a human-readable date such as:
-
-```text
-22 October 2026
-```
-
-while the historical CSV uses ISO dates:
-
-```text
-2026-10-22
-```
-
-`rates.py` normalizes both to `YYYY-MM-DD`.
-
-The historical ECB file is the recovery source for missed runs. The daily file
-is used as an additional freshness/overlay source.
-
-### RUB after the ECB suspension: potential additional source
-
-The ECB last published EUR/RUB on March 1, 2022; later RUB cells remain blank.
-The Bank of Russia is a possible official source for filling that period in a
-future integration. Its [XML interface](https://www.cbr.ru/development/sxml/)
-provides historical EUR observations via `XML_dynamic.asp`, with currency ID
-`R01239`, and the daily export via `XML_daily_eng.asp`. The historical endpoint
-was checked against March 2022 and October 2026 observations on 2026-10-29.
-Its `Value / Nominal` yields RUB per EUR, matching this project's rate convention.
-
-This would be a source change: [ECB suspension](https://www.ecb.europa.eu/services/using-our-site/technical-updates/html/ecb.technical_update220302.en.html)
-and [Bank of Russia methodology](https://www.cbr.ru/eng/press/pr/?file=638538938437943081ENG_PP.htm)
-should be recorded alongside the series. CBR rates have their own effective dates
-(normally the day after setting) and remain valid until superseded; these differ
-from ECB observation dates and the current blank-on-nonpublication-days policy.
-An integration must define that date mapping and source provenance explicitly.
-This research does not enable CBR downloads or change any RUB values.
-
-### ECB download cache and `--force`
-
-Downloaded ZIPs are stored in `.cache/ecb/` (change this with `--ecb-cache-dir`).
-Each file is checked independently against the latest expected release: around
-16:00 Europe/Amsterdam on weekdays, excluding TARGET closing days (January 1,
-Good Friday, Easter Monday, May 1, December 25 and 26). The calendar follows
-daylight saving time. See the [ECB publication schedule](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html)
-and [TARGET closing days](https://www.ecb.europa.eu/ecb/contacts/working-hours/html/index.en.html).
-
-If the latest date inside a cached file covers that release, it is reused without
-a network request. Repeated runs, weekends, holidays, and runs before publication
-therefore reuse current downloads. Existing `eurofxref-hist.zip`, `eurofxref.zip`,
-or their unzipped `.csv` equivalents in the working directory are also recognized.
-Missing, corrupt, or outdated files are downloaded and validated before replacing
-their cache entries. If a source still returns old data after its expected release,
-the next run retries it. Same-day corrections are picked up by the next scheduled
-refresh or a forced download.
-
-When nothing is downloaded, the script prints a reminder:
-
-```text
-No ECB downloads needed. Use --force to force an ECB download (explicit local CSV overrides stay local).
-```
-
-Run `python rates.py --force` to refresh both ZIPs regardless of freshness.
-`--force` affects ECB downloads only; valid cached crypto rates remain preserved.
-The explicit `--ecb-daily-file` and `--ecb-hist-file` options always use the supplied
-local CSVs, including with `--force`. Freshness uses the actual clock; `--run-date`
-only changes the snapshot's label and data cutoff.
-
-GitHub Actions restores and saves `.cache/ecb` between runs, so fresh runners can
-also skip unnecessary downloads. For manual runs, the Actions form includes a
-**Force ECB ZIP downloads** option. If GitHub evicts the cache, the next run
-downloads it again automatically. Cache files are not part of the exported data.
-
-## GitHub Actions
-
-The workflow runs daily at **16:30 Europe/Amsterdam** (CET in winter, CEST in
-summer), half an hour after the ECB's usual 16:00 publication time. The rate-setting
-procedure around 14:10 is earlier than publication; see the
-[ECB reference-rate page](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html).
-GitHub's schedule uses `cron: "30 16 * * *"` with `timezone: "Europe/Amsterdam"`
-to follow daylight saving time automatically. GitHub may delay scheduled starts.
-The workflow also runs on weekends for crypto data and can be started manually
-from the Actions tab.
-
-The workflow requires:
-
-```yaml
-permissions:
-  contents: write
-```
-
-so that it can commit each generated snapshot back to `output/`.
-
-If branch protection prevents direct pushes, change the workflow to open a pull
-request instead.
-
-## Local run
-
-```bash
-python -m pip install -r requirements.txt
-python rates.py
-```
-
-For testing with local ECB files:
-
-```bash
-python rates.py \
-  --run-date 2026-10-23 \
-  --ecb-daily-file eurofxref.csv \
-  --ecb-hist-file eurofxref-hist.csv
-```
-
-## Repository structure
-
-```text
-.
-├── rates.py
-├── assets.json
-├── requirements.txt
-├── README.md
-├── .github/
-│   └── workflows/
-│       └── update-rates.yml
-└── output/
-    └── .gitkeep
-```
-
-## Operational note
-
-For an air-gapped downstream environment, treat each dated CSV as an immutable
-reference-data package. The filename itself identifies the snapshot date. Keep
-the original transaction amount/currency and the rate/snapshot used for each
-conversion so that later backfills are auditable.
-
-## Conversion library
-
-### Offline rate quotes
-
-`get_rate()` returns an immutable `RateQuote` with a `Decimal` multiplier,
-the actual selected observation's `rate_date` (`datetime.date`), and
-`snapshot_version`. The multiplier is **destination units per one source unit**:
-
-```python
-from offline_currency_coverter import Converter, get_rate, convert
-from decimal import Decimal
+from offline_currency_coverter import get_rate, convert
 
 quote = get_rate("USD", "EUR", transaction_date="2026-11-02", date_window=30)
-euro_amount = Decimal("100") * quote.rate
-print(quote.rate_date, quote.snapshot_version)
-
-converter = Converter()  # Load the snapshot once for repeated lookups.
-quote = converter.get_rate("BTC", "EUR", "2026-11-02", 30)
-amount = converter.convert("0.01", "BTC", "EUR", "2026-11-02", 30)
-# Equivalent to Decimal("0.01") * quote.rate, without monetary rounding.
+amount = convert("100", "USD", "EUR", transaction_date="2026-11-02", date_window=30)
 ```
 
-CSV rates remain currency units per EUR; the quote is destination-per-EUR
-divided by source-per-EUR. EUR's rate is 1. Both currencies must have usable
-rates on the same row. The nearest observation within the inclusive window
-wins, with an earlier-date tie break. `rate_date` can differ from the requested
-date. Identical supported currencies return 1 and the resolved requested date,
-even without a historical observation.
+## Development and data maintenance
 
-`snapshot_version` is the filename date such as `"2026.11.09"`, captured when
-the CSV is loaded. Custom filenames without a recognized dated snapshot name
-return `None`. This identifies the snapshot, not the provenance of each
-observation. The wheel version follows the snapshot date. No lookup fetches
-data or updates snapshots.
-
-The module-level `get_rate()` accepts `rates_path=` and `output_dir=` just like
-`convert()`. Both APIs default to yesterday in Europe/Amsterdam and a +/-10-day
-window; explicit `None` means today. **Explicitly pass your selected transaction
-date and `date_window=30` when that is your required policy.** Invalid dates or
-windows raise `ValueError`; unsupported symbols raise `UnknownCurrencyError`;
-missing usable observations raise `RateNotFoundError`.
-
-Use the latest local CSV snapshot without network requests:
-
-```python
-from offline_currency_coverter import convert, Converter, UnknownCurrencyError, RateNotFoundError
-
-amount = convert(100, "USD", "EUR", "1.1.2026", 10)
-# Returns Decimal: 100 / the closest available USD-per-EUR rate.
-
-amount = convert(100, "JPY", "USD", "2026-01-01", 10)
-# Cross-converts via EUR: 100 / JPY-per-EUR * USD-per-EUR.
-
-amount = convert(100, "USD", "EUR")        # Yesterday, +/-10 days
-amount = convert(100, "USD", "EUR", None)  # Today, +/-10 days
-
-# Reuse a loaded snapshot for multiple conversions:
-converter = Converter(output_dir="output")
-amount = converter.convert(100, "USD", "EUR", "2026-01-01", 10)
-```
-
-`convert(amount, from_currency, to_currency, transaction_date, date_window)`
-accepts currency symbols (case insensitive), a finite numeric amount, and a
-non-negative integer window in calendar days. The window defaults to 10 and is
-inclusive in both directions; zero requires an exact date. Dates accept Python
-`date`/`datetime` objects, `YYYY-MM-DD`, or `D.M.YYYY` strings. Omitted dates mean
-yesterday; explicit `None` means today, using Europe/Amsterdam. Datetimes use
-their calendar date as supplied.
-
-The nearest usable observation wins; equal distances prefer the earlier date.
-Cross-conversions require valid rates for both currencies **on the same date**.
-Blank, `ERROR`, non-finite, zero and negative rates are skipped. EUR has an
-implicit rate of 1. Known same-currency conversions return the amount unchanged.
-Results use `Decimal` arithmetic with the active decimal context and no currency
-rounding; use string or `Decimal` amounts to preserve input precision.
-
-For fiat amounts, keep full precision during conversion and round the final
-result to the output currency's minor unit. EUR and USD use two decimal places
-(cents), while some currencies use zero or three. The library leaves rounding
-to the caller so you can choose the currency precision and rounding rule.
-
-For example, round a USD-to-EUR result to the nearest cent using `ROUND_HALF_UP`
-(halfway values round away from zero):
-
-```python
-from decimal import Decimal, ROUND_HALF_UP
-from offline_currency_coverter import convert
-
-eur = convert("100", "USD", "EUR", "2026-11-02", 0)
-eur = eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-print(eur)
-```
-
-Formatting with `f"{eur:.2f}"` rounds only the displayed text; `quantize()`
-returns a rounded `Decimal` value. Formatting uses the active decimal context's
-rounding rule, so use `quantize()` when you need an explicit rule.
-
-`UnknownCurrencyError` means a symbol is absent from the snapshot (EUR is always
-known). `RateNotFoundError` means no snapshot exists or no suitable observation
-exists within the window; the error identifies currencies without rates. A
-historical currency such as SIT may be known yet have no rate near a recent
-transaction date. Invalid arguments raise `ValueError`.
-
-By default, the library reads the newest snapshot across local `output/`
-and the package’s bundled data. Both `convert` and `Converter` accept
-`rates_path="path/to/snapshot.csv"` or `output_dir="path/to/output"` as keyword
-arguments. Source checkouts need a generated or downloaded snapshot; published packages
-include one. Conversion does not refresh rates.
-
-## Build and publish a dated Python package
-
-### Daily GitHub Actions wheel
-
-The **Update ECB + crypto rates** workflow also tests the code, builds a wheel
-with the generated CSV snapshot and Python conversion wrapper, and uploads it
-as a workflow artifact named `offline-currency-coverter-wheel-RUN_ID-RUN_ATTEMPT`.
-It also commits the wheel to `output/` alongside the CSV and Excel snapshot.
-The wheel version follows the snapshot date (for example, a snapshot dated
-`2026.11.09` produces `offlinecurrencycoverter-2026.11.9-py3-none-any.whl`;
-Python packaging normalizes leading zeros in version numbers).
-Download and unzip the artifact from the workflow run, then install the wheel:
+See [Data generation and package maintenance](docs/operations.md) for source
+configuration, daily scheduling, CSV/Excel formats, caching, wheel builds,
+and optional PyPI publication.
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install /path/to/offlinecurrencycoverter-YYYY.M.D-py3-none-any.whl
-
-offline-currency-coverter currencies
-offline-currency-coverter convert 100 USD EUR --date 2026-11-02 --date-window 0
-# The same commands work through python -m offline_currency_coverter.
-```
-
-Conversion and currency listing use local or bundled data without network
-requests. Both commands accept `--rates-path /path/to/snapshot.csv` or
-`--output-dir /path/to/output`. Conversion prints an unrounded decimal amount;
-see the rounding example above. With no date, the command uses the latest common observation. An explicit
-`--date` requires an exact rate unless `--date-window` is supplied. The currency list includes EUR and every snapshot
-symbol, including historical currencies; a listed currency may lack rates for
-the requested date. Python callers can use:
-
-```python
-from offline_currency_coverter import convert, supported_currencies
-
-print(supported_currencies())
-print(convert("100", "USD", "EUR", "2026-11-02", 0))
-```
-
-To build the same wheel locally from an existing snapshot without fetching:
-
-```sh
-python -m pip install -r requirements-release.txt
+python -m pip install -r requirements.txt -r requirements-release.txt
+python -m unittest discover -v
 python build_wheel.py
 ```
 
-This build uses the newest CSV in `output/`, versions the package by that
-snapshot's filename date, and writes to `dist/YYYY.MM.DD/`. Use `--output-dir`
-or `--dist-dir` to choose other directories. Existing build directories are
-rejected. The wheel preserves blanks and `ERROR` cells from the generated data;
-conversion skips unusable rates. It bundles only the newest CSV, not Excel files.
-The default version is date-only (`YYYY.M.D`). Rebuilding the same snapshot
-in the daily workflow replaces its wheel in `output/`. To reinstall an updated
-wheel with the same version, use `python -m pip install --force-reinstall
-/path/to/the.whl`. An explicit `--revision N` is available when needed.
-Dependencies must be installed from an accessible package index or wheelhouse.
-Workflow artifacts are retained for 90 days; copy approved wheels to a private
-GitHub Release or corporate package index for long-term installation.
-
-### PyPI release
-
-Install release tooling, then build and validate locally:
-
-```sh
-python -m pip install -r requirements-release.txt
-python publish_package.py
-```
-
-The script first runs the fetcher for today (Europe/Amsterdam). A nonzero exit,
-a missing current snapshot, or any `ERROR` download cells aborts the release
-before building or uploading. Ordinary blank observations, such as weekend fiat
-rates, remain allowed. Once fetching succeeds, it stages the package code, bundled asset configuration,
-and **only the newest dated CSV** from `output/`. It builds a wheel and source
-archive, then runs `twine check --strict`. Artifacts go into
-`dist/YYYY.MM.DD/`. Source files are not modified. Excel files, caches, tests,
-and credentials are excluded. The build date uses Europe/Amsterdam and can be
-overridden with `--date 2026-11-03`. `--output-dir` selects the snapshot directory;
-`--dist-dir` selects the artifact root. Existing release directories are rejected
-so old artifacts cannot accidentally be uploaded.
-
-To build, check, and upload to PyPI, configure a PyPI API token through Twine
-(e.g. `TWINE_USERNAME=__token__` and `TWINE_PASSWORD` supplied securely through
-your environment), then run:
-
-```sh
-python publish_package.py --publish --dist-dir publish-dist
-# Or test the release against TestPyPI using a TestPyPI token:
-python publish_package.py --publish --repository testpypi --dist-dir test-dist
-```
-
-The distribution name is `OfflineCurrencyCoverter`; your PyPI account must be allowed
-to publish under that name. Authentication and upload errors fail the script.
-Never commit API tokens. Without `--publish`, nothing is uploaded. PyPI versions
-cannot be overwritten, so this scheme permits one release per calendar date.
-The requested date version `2026.11.03` is normalized by Python packaging tools
-to `2026.11.3`; these identify the same release.
-
-After publication:
-
-```sh
-pip install OfflineCurrencyCoverter==2026.11.3
-```
-
-```python
-from offline_currency_coverter import convert
-amount = convert(100, "USD", "EUR", "2026-01-01", 10)
-```
-
-With no explicit data path, conversion selects the newest filename date across
-local `output/` and the installed bundled data. An explicit `output_dir` or
-`rates_path` uses only that location. Every release fetches fresh rates before building. `--date` changes the package
-version only; the fetch still uses today. Check the snapshot filename printed
-by the script. For environments with build tools already installed,
-`--no-isolation` avoids downloading them into a separate build environment.
-
-### Publish through GitHub Actions
-
-`.github/workflows/publish-pypi.yml` provides a manual **Publish Python package to
-PyPI** workflow. It tests the code, runs the mandatory fetch-and-build script,
-and hands checked artifacts to a separate publishing job. Failed fetching,
-`ERROR` cells, tests, or validation prevent publication. Only the default branch
-can publish. The workflow has no push or pull-request trigger.
-
-Use PyPI **Trusted Publishing** so GitHub needs no stored PyPI password or API
-token. Configure these once:
-
-1. Push this workflow and the packaging code to your GitHub repository.
-2. In repository **Settings → Environments**, create an environment named `pypi`.
-   Restrict deployments to the default branch.
-3. In PyPI, open the project's **Publishing** settings and add a GitHub publisher.
-   For a new project, use **Your account → Publishing → Add a new pending publisher**.
-   Enter your actual GitHub owner and repository, workflow filename
-   `publish-pypi.yml`, and environment name `pypi`. For a pending publisher,
-   use project name `OfflineCurrencyCoverter` (the name must be available).
-4. Keep the fetcher's optional `CMC_API_KEY` in repository **Settings → Secrets
-   and variables → Actions → New repository secret**. It is used during fetching;
-   the PyPI publishing job does not receive it.
-5. Open **Actions → Publish Python package to PyPI → Run workflow**, selecting
-   the default branch.
-
-GitHub supplies a short-lived identity token to PyPI during publishing. No
-`PYPI_API_TOKEN` secret is needed. A second publication of the same date version
-fails because PyPI releases cannot be overwritten. Artifacts remain downloadable
-from the successful build job for seven days even if publishing fails.
-
-If your repository name or package name differs from the examples, use your
-actual repository in the PyPI publisher settings and update `pyproject.toml`
-and the workflow's project URL if you rename the distribution.
+`build_wheel.py` packages the newest existing snapshot without downloading data.
+`python rates.py` performs the network-enabled data update separately.
