@@ -1,4 +1,4 @@
-# crypto-exchangerate
+# OfflineCurrencyCoverter
 
 Offline historical fiat and cryptocurrency conversion using daily ECB and
 CoinMarketCap snapshots. Each wheel bundles a dated CSV, so conversion and rate
@@ -12,7 +12,7 @@ Python 3.10 or newer:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/crypto_exchangerate-YYYY.M.D-py3-none-any.whl
+python -m pip install /path/to/offlinecurrencycoverter-YYYY.M.D-py3-none-any.whl
 ```
 
 Create a converter once and reuse it:
@@ -20,7 +20,7 @@ Create a converter once and reuse it:
 ```python
 from datetime import date
 from decimal import Decimal
-from crypto_exchangerate import CurrencyConverter
+from offline_currency_coverter import CurrencyConverter
 
 c = CurrencyConverter(decimal=True)
 euros = c.convert("100", "USD", date=date(2026, 11, 2))  # EUR is the default target.
@@ -37,7 +37,7 @@ print(first_date, last_date)
 
 The interface follows the common calls of
 [CurrencyConverter](https://pypi.org/project/CurrencyConverter/), while this
-separate package is imported as `crypto_exchangerate` and also supports crypto.
+separate package is imported as `offline_currency_coverter` and also supports crypto.
 
 - `c.convert(amount, currency, new_currency="EUR", date=None)` defaults to EUR
   and uses the latest common observation when `date` is omitted or `None`.
@@ -86,9 +86,9 @@ snapshot generation job downloads rates.
 ## Command line
 
 ```sh
-crypto-exchangerate 100 USD --to EUR --date 2026-11-02
-crypto-exchangerate convert 100 USD --date 2026-11-02  # Default target: EUR
-crypto-exchangerate currencies
+offline-currency-coverter 100 USD --to EUR --date 2026-11-02
+offline-currency-coverter convert 100 USD --date 2026-11-02  # Default target: EUR
+offline-currency-coverter currencies
 ```
 
 Use `--date-window 30` for a +/-30-day lookup, or `--rates-path snapshot.csv`
@@ -475,7 +475,7 @@ the actual selected observation's `rate_date` (`datetime.date`), and
 `snapshot_version`. The multiplier is **destination units per one source unit**:
 
 ```python
-from crypto_exchangerate import Converter, get_rate, convert
+from offline_currency_coverter import Converter, get_rate, convert
 from decimal import Decimal
 
 quote = get_rate("USD", "EUR", transaction_date="2026-11-02", date_window=30)
@@ -511,7 +511,7 @@ missing usable observations raise `RateNotFoundError`.
 Use the latest local CSV snapshot without network requests:
 
 ```python
-from crypto_exchangerate import convert, Converter, UnknownCurrencyError, RateNotFoundError
+from offline_currency_coverter import convert, Converter, UnknownCurrencyError, RateNotFoundError
 
 amount = convert(100, "USD", "EUR", "1.1.2026", 10)
 # Returns Decimal: 100 / the closest available USD-per-EUR rate.
@@ -552,7 +552,7 @@ For example, round a USD-to-EUR result to the nearest cent using `ROUND_HALF_UP`
 
 ```python
 from decimal import Decimal, ROUND_HALF_UP
-from crypto_exchangerate import convert
+from offline_currency_coverter import convert
 
 eur = convert("100", "USD", "EUR", "2026-11-02", 0)
 eur = eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -581,21 +581,21 @@ include one. Conversion does not refresh rates.
 
 The **Update ECB + crypto rates** workflow also tests the code, builds a wheel
 with the generated CSV snapshot and Python conversion wrapper, and uploads it
-as a workflow artifact named `crypto-exchangerate-wheel-RUN_ID-RUN_ATTEMPT`.
+as a workflow artifact named `offline-currency-coverter-wheel-RUN_ID-RUN_ATTEMPT`.
 It also commits the wheel to `output/` alongside the CSV and Excel snapshot.
 The wheel version follows the snapshot date (for example, a snapshot dated
-`2026.11.09` produces `crypto_exchangerate-2026.11.9-py3-none-any.whl`;
+`2026.11.09` produces `offlinecurrencycoverter-2026.11.9-py3-none-any.whl`;
 Python packaging normalizes leading zeros in version numbers).
 Download and unzip the artifact from the workflow run, then install the wheel:
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/crypto_exchangerate-YYYY.M.D-py3-none-any.whl
+python -m pip install /path/to/offlinecurrencycoverter-YYYY.M.D-py3-none-any.whl
 
-crypto-exchangerate currencies
-crypto-exchangerate convert 100 USD EUR --date 2026-11-02 --date-window 0
-# The same commands work through python -m crypto_exchangerate.
+offline-currency-coverter currencies
+offline-currency-coverter convert 100 USD EUR --date 2026-11-02 --date-window 0
+# The same commands work through python -m offline_currency_coverter.
 ```
 
 Conversion and currency listing use local or bundled data without network
@@ -607,7 +607,7 @@ symbol, including historical currencies; a listed currency may lack rates for
 the requested date. Python callers can use:
 
 ```python
-from crypto_exchangerate import convert, supported_currencies
+from offline_currency_coverter import convert, supported_currencies
 
 print(supported_currencies())
 print(convert("100", "USD", "EUR", "2026-11-02", 0))
@@ -664,7 +664,7 @@ python publish_package.py --publish --dist-dir publish-dist
 python publish_package.py --publish --repository testpypi --dist-dir test-dist
 ```
 
-The distribution name is `crypto-exchangerate`; your PyPI account must be allowed
+The distribution name is `OfflineCurrencyCoverter`; your PyPI account must be allowed
 to publish under that name. Authentication and upload errors fail the script.
 Never commit API tokens. Without `--publish`, nothing is uploaded. PyPI versions
 cannot be overwritten, so this scheme permits one release per calendar date.
@@ -674,11 +674,11 @@ to `2026.11.3`; these identify the same release.
 After publication:
 
 ```sh
-pip install crypto-exchangerate==2026.11.3
+pip install OfflineCurrencyCoverter==2026.11.3
 ```
 
 ```python
-from crypto_exchangerate import convert
+from offline_currency_coverter import convert
 amount = convert(100, "USD", "EUR", "2026-01-01", 10)
 ```
 
@@ -707,7 +707,7 @@ token. Configure these once:
    For a new project, use **Your account → Publishing → Add a new pending publisher**.
    Enter your actual GitHub owner and repository, workflow filename
    `publish-pypi.yml`, and environment name `pypi`. For a pending publisher,
-   use project name `crypto-exchangerate` (the name must be available).
+   use project name `OfflineCurrencyCoverter` (the name must be available).
 4. Keep the fetcher's optional `CMC_API_KEY` in repository **Settings → Secrets
    and variables → Actions → New repository secret**. It is used during fetching;
    the PyPI publishing job does not receive it.

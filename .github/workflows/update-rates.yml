@@ -72,7 +72,7 @@ jobs:
       - name: Save installable wheel
         uses: actions/upload-artifact@v4
         with:
-          name: crypto-exchangerate-wheel-${{ github.run_id }}-${{ github.run_attempt }}
+          name: offline-currency-coverter-wheel-${{ github.run_id }}-${{ github.run_attempt }}
           path: output/*.whl
           if-no-files-found: error
           retention-days: 90

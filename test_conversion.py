@@ -9,14 +9,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from crypto_exchangerate import (
+from offline_currency_coverter import (
     Converter,
     RateNotFoundError,
     UnknownCurrencyError,
     convert,
     supported_currencies,
 )
-from crypto_exchangerate.cli import main
+from offline_currency_coverter.cli import main
 
 
 class ConversionTests(unittest.TestCase):
@@ -58,7 +58,7 @@ class ConversionTests(unittest.TestCase):
         with self.assertRaises(RateNotFoundError):
             self.converter.convert(1, 'BTC', 'EUR', '2026-01-04', 0)
 
-    @patch('crypto_exchangerate.conversion._today', return_value=date(2026, 1, 4))
+    @patch('offline_currency_coverter.conversion._today', return_value=date(2026, 1, 4))
     def test_omitted_date_yesterday_none_today_and_default_window(self, _):
         self.assertEqual(self.converter.convert(100, 'JPY', 'EUR'), Decimal('0.5'))
         self.assertEqual(self.converter.convert(180, 'JPY', 'EUR', None), Decimal(1))

@@ -24,7 +24,7 @@ def main(argv=None):
     destination = args.dist_dir.resolve() / snapshot_date.strftime("%Y.%m.%d")
     if destination.exists():
         parser.error(f"Build directory already exists: {destination}; use a fresh --dist-dir")
-    with TemporaryDirectory(prefix="crypto-exchangerate-wheel-") as directory:
+    with TemporaryDirectory(prefix="offline-currency-coverter-wheel-") as directory:
         stage = Path(directory)
         stage_package(stage, snapshot, snapshot_date, revision=args.revision)
         subprocess.run([sys.executable, "-m", "build", "--wheel",
