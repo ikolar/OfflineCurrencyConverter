@@ -399,8 +399,8 @@ even without a historical observation.
 `snapshot_version` is the filename date such as `"2026.11.09"`, captured when
 the CSV is loaded. Custom filenames without a recognized dated snapshot name
 return `None`. This identifies the snapshot, not the provenance of each
-observation. A wheel's `.post1` revision is a code revision and is not part of
-this snapshot date. No lookup fetches data or updates snapshots.
+observation. The wheel version follows the snapshot date. No lookup fetches
+data or updates snapshots.
 
 The module-level `get_rate()` accepts `rates_path=` and `output_dir=` just like
 `convert()`. Both APIs default to yesterday in Europe/Amsterdam and a +/-10-day
@@ -485,7 +485,7 @@ with the generated CSV snapshot and Python conversion wrapper, and uploads it
 as a workflow artifact named `crypto-exchangerate-wheel-RUN_ID-RUN_ATTEMPT`.
 It also commits the wheel to `output/` alongside the CSV and Excel snapshot.
 The wheel version follows the snapshot date (for example, a snapshot dated
-`2026.11.09` produces `crypto_exchangerate-2026.11.9.post1-py3-none-any.whl`;
+`2026.11.09` produces `crypto_exchangerate-2026.11.9-py3-none-any.whl`;
 Python packaging normalizes leading zeros in version numbers).
 Download and unzip the artifact from the workflow run, then install the wheel:
 
@@ -526,9 +526,10 @@ snapshot's filename date, and writes to `dist/YYYY.MM.DD/`. Use `--output-dir`
 or `--dist-dir` to choose other directories. Existing build directories are
 rejected. The wheel preserves blanks and `ERROR` cells from the generated data;
 conversion skips unusable rates. It bundles only the newest CSV, not Excel files.
-The rate-quote API uses post-release revision 1 by default (`YYYY.M.D.post1`),
-so it upgrades the earlier date-only build. `--revision N` selects a revision;
-use a higher revision when republishing changed code for the same snapshot.
+The default version is date-only (`YYYY.M.D`). Rebuilding the same snapshot
+in the daily workflow replaces its wheel in `output/`. To reinstall an updated
+wheel with the same version, use `python -m pip install --force-reinstall
+/path/to/the.whl`. An explicit `--revision N` is available when needed.
 Dependencies must be installed from an accessible package index or wheelhouse.
 Workflow artifacts are retained for 90 days; copy approved wheels to a private
 GitHub Release or corporate package index for long-term installation.

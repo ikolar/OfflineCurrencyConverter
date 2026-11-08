@@ -14,7 +14,7 @@ def main(argv=None):
     parser.add_argument("--output-dir", type=Path, default=ROOT / "output")
     parser.add_argument("--dist-dir", type=Path, default=ROOT / "dist")
     parser.add_argument("--no-isolation", action="store_true")
-    parser.add_argument("--revision", type=int, default=1, help="Post-release revision (default: 1 for the rate quote API)")
+    parser.add_argument("--revision", type=int, default=0, help="Optional post-release revision (default: 0, date-only version)")
     args = parser.parse_args(argv)
     if args.revision < 0:
         parser.error("--revision must be non-negative")
