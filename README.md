@@ -1,4 +1,103 @@
-# ECB + CoinMarketCap daily exchange-rate snapshots
+# crypto-exchangerate
+
+Offline historical fiat and cryptocurrency conversion using daily ECB and
+CoinMarketCap snapshots. Each wheel bundles a dated CSV, so conversion and rate
+lookup work without network access. Use `decimal=True` for `Decimal` results without monetary rounding.
+
+## Install and convert
+
+Download the wheel from this repository's `output/` folder, then install it in
+Python 3.10 or newer:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install /path/to/crypto_exchangerate-YYYY.M.D-py3-none-any.whl
+```
+
+Create a converter once and reuse it:
+
+```python
+from datetime import date
+from decimal import Decimal
+from crypto_exchangerate import CurrencyConverter
+
+c = CurrencyConverter(decimal=True)
+euros = c.convert("100", "USD", date=date(2026, 11, 2))  # EUR is the default target.
+yen = c.convert("100", "USD", "JPY", date=date(2026, 11, 2))
+
+quote = c.get_rate("USD", "EUR", date=date(2026, 11, 2), date_window=30)
+euro_amount = Decimal("100") * quote.rate
+print(quote.rate_date, quote.snapshot_version)
+
+print(sorted(c.currencies))
+first_date, last_date = c.bounds["USD"]
+print(first_date, last_date)
+```
+
+The interface follows the common calls of
+[CurrencyConverter](https://pypi.org/project/CurrencyConverter/), while this
+separate package is imported as `crypto_exchangerate` and also supports crypto.
+
+- `c.convert(amount, currency, new_currency="EUR", date=None)` defaults to EUR
+  and uses the latest common observation when `date` is omitted or `None`.
+- Like CurrencyConverter, amounts are returned as floats by default. Set
+  `decimal=True` to return `Decimal`; `get_rate()` always returns a `RateQuote`
+  containing a `Decimal` multiplier, actual `rate_date`, and snapshot version.
+- Pass `date_window=30` to either method for inclusive +/-30-day nearest-rate
+  lookup. This overrides fallback settings, including out-of-range fallback.
+  The closest common observation wins, with earlier dates winning ties.
+- Without a window, an explicit date requires an exact observation by default.
+  Enable `fallback_on_missing_rate=True` to select the last common observation
+  on or before a missing date within the currencies' bounds. Enable
+  `fallback_on_wrong_date=True` to use the first or last common observation for
+  dates outside the available range. Quotes report the actual selected date.
+- The fallback method is `last_known`. Linear interpolation is not implemented;
+  specifying `fallback_on_missing_rate_method="linear_interpolation"` raises
+  `ValueError`. Every returned quote identifies an actual observation.
+- `bounds` contains the first and last usable dates per currency;
+  currencies with no usable rates are omitted. EUR bounds cover the snapshot
+  calendar; EUR identity quotes work even outside those bounds.
+- `CurrencyConverter("/path/to/snapshot.csv")` loads a custom local CSV.
+  Its `currency_file=` keyword is also supported. URLs and ZIP inputs are not
+  supported. No lookup downloads data.
+
+For example, enable the last-known fallback while preserving decimal arithmetic:
+
+```python
+c = CurrencyConverter(
+    fallback_on_missing_rate=True, fallback_on_wrong_date=True, decimal=True
+)
+quote = c.get_rate("USD", date="2026-11-07")
+print(quote.rate_date)  # Actual observation, potentially before the requested date.
+```
+
+The existing `Converter`, module-level `convert()` and `get_rate()` preserve
+all their existing behavior: `transaction_date=` keyword, yesterday by default,
+explicit `None` for today, a default +/-10-day window, and `Decimal` amounts.
+The `CurrencyConverter` facade uses `date=` and latest-rate defaults to match
+the familiar API. Both interfaces share one offline observation lookup engine.
+
+For air-gapped deployment, install the wheel and its dependencies from your
+internal PyPI mirror or local wheelhouse. Runtime lookup requires no Internet
+access, ECB connection, or CoinMarketCap connection. Only the separate daily
+snapshot generation job downloads rates.
+
+## Command line
+
+```sh
+crypto-exchangerate 100 USD --to EUR --date 2026-11-02
+crypto-exchangerate convert 100 USD --date 2026-11-02  # Default target: EUR
+crypto-exchangerate currencies
+```
+
+Use `--date-window 30` for a +/-30-day lookup, or `--rates-path snapshot.csv`
+for an explicit local snapshot. With no date these commands use the latest
+common observation; an explicit date requires an exact rate unless you pass a
+window. These commands print unrounded amounts.
+The existing `python rates.py` command generates daily snapshots.
+
+## Daily snapshots
 
 This repository generates matching cumulative CSV and Excel files every day:
 
@@ -502,8 +601,8 @@ crypto-exchangerate convert 100 USD EUR --date 2026-11-02 --date-window 0
 Conversion and currency listing use local or bundled data without network
 requests. Both commands accept `--rates-path /path/to/snapshot.csv` or
 `--output-dir /path/to/output`. Conversion prints an unrounded decimal amount;
-see the rounding example above. With no date, conversion uses yesterday and a
-default window of +/-10 days. The currency list includes EUR and every snapshot
+see the rounding example above. With no date, the command uses the latest common observation. An explicit
+`--date` requires an exact rate unless `--date-window` is supplied. The currency list includes EUR and every snapshot
 symbol, including historical currencies; a listed currency may lack rates for
 the requested date. Python callers can use:
 

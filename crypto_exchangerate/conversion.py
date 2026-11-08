@@ -7,11 +7,19 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import NamedTuple
 
 from .core import LOCAL_TZ, OUTPUT_DIR, OUTPUT_PREFIX
 
 _DEFAULT_DATE = object()
 DEFAULT_DATE_WINDOW = 10
+
+
+class CurrencyBounds(NamedTuple):
+    """First and last dates with a usable rate for a currency."""
+
+    first_date: date
+    last_date: date
 
 
 @dataclass(frozen=True)
@@ -100,6 +108,25 @@ class Converter:
             self.currencies = frozenset(reader.fieldnames) - {"Date"} | {"EUR"}
             self._rows = [(date.fromisoformat(row["Date"]), row) for row in reader]
 
+    @property
+    def bounds(self) -> dict[str, CurrencyBounds]:
+        """Usable date bounds; currencies with no valid observations are omitted.
+
+        EUR bounds cover the snapshot calendar, although EUR identity quotes
+        are valid independently of historical observations.
+        """
+        bounds = {}
+        for day, row in self._rows:
+            for currency in self.currencies:
+                if currency != "EUR" and _rate(row.get(currency, "")) is None:
+                    continue
+                previous = bounds.get(currency)
+                bounds[currency] = CurrencyBounds(
+                    min(day, previous.first_date) if previous else day,
+                    max(day, previous.last_date) if previous else day,
+                )
+        return bounds
+
     def get_rate(self, from_currency: str, to_currency: str,
                  transaction_date=_DEFAULT_DATE,
                  date_window: int = DEFAULT_DATE_WINDOW) -> RateQuote:
@@ -115,8 +142,14 @@ class Converter:
         source, target = currencies
         if source == target:
             return RateQuote(Decimal(1), target_date, self.snapshot_version)
+        return self._lookup_quote(source, target, target_date, date_window)
+
+    def _lookup_quote(self, source, target, target_date, date_window, *, last_known=False):
+        currencies = (source, target)
         candidates = sorted(
-            ((day, row) for day, row in self._rows if abs((day - target_date).days) <= date_window),
+            ((day, row) for day, row in self._rows
+             if (date_window is None or abs((day - target_date).days) <= date_window)
+             and (not last_known or day <= target_date)),
             key=lambda item: (abs((item[0] - target_date).days), item[0]),
         )
         available = set()
@@ -127,7 +160,8 @@ class Converter:
                 return RateQuote(rates[target] / rates[source], day, self.snapshot_version)
         missing = [c for c in dict.fromkeys(currencies) if c != "EUR" and c not in available]
         detail = f" for {', '.join(missing)}" if missing else f" on a common date for {source} and {target}"
-        raise RateNotFoundError(f"Cannot get a rate{detail} within +/-{date_window} days of {target_date}")
+        window = f"within +/-{date_window} days of" if date_window is not None else "on or before"
+        raise RateNotFoundError(f"Cannot get a rate{detail} {window} {target_date}")
 
 
     def convert(self, amount, from_currency: str, to_currency: str,
@@ -141,6 +175,68 @@ class Converter:
         if not number.is_finite():
             raise ValueError("amount must be a finite number")
         return number * quote.rate
+
+
+class CurrencyConverter(Converter):
+    """CurrencyConverter-style API backed exclusively by local snapshot data.
+
+    Omitted dates use the latest common observation. An explicit date_window
+    selects nearest observations; otherwise missing dates fail unless the
+    last-known fallback is enabled. Set decimal=True for Decimal amounts.
+    """
+
+    def __init__(self, currency_file: str | Path | None = None,
+                 fallback_on_wrong_date=False, fallback_on_missing_rate=False,
+                 fallback_on_missing_rate_method="last_known", *, decimal=False,
+                 output_dir: str | Path | None = None):
+        if fallback_on_missing_rate_method != "last_known":
+            raise ValueError("Only last_known fallback is supported; interpolation is not enabled")
+        self.fallback_on_wrong_date = fallback_on_wrong_date
+        self.fallback_on_missing_rate = fallback_on_missing_rate
+        self.fallback_on_missing_rate_method = fallback_on_missing_rate_method
+        self.decimal = decimal
+        super().__init__(currency_file, output_dir=output_dir)
+
+    def convert(self, amount, currency: str, new_currency: str = "EUR",
+                date=None, date_window=None) -> Decimal | float:
+        """Convert to EUR by default; decimal=True preserves Decimal results."""
+        result = super().convert(amount, currency, new_currency, date, date_window)
+        return result if self.decimal else float(result)
+
+    def get_rate(self, currency: str, new_currency: str = "EUR",
+                 date=None, date_window=None) -> RateQuote:
+        """Return a Decimal quote; date_window overrides the fallback policies."""
+        latest = date is None
+        if latest:
+            # A snapshot calendar may contain weekends with no fiat rates.
+            date = max((day for day, _ in self._rows), default=_today())
+        requested = _date(date)
+        if date_window is not None:
+            return super().get_rate(currency, new_currency, requested, date_window)
+        try:
+            return super().get_rate(currency, new_currency, requested, 0)
+        except RateNotFoundError:
+            # super() has already validated the symbols and requested date.
+            source, target = currency.strip().upper(), new_currency.strip().upper()
+            if latest:
+                return self._lookup_quote(source, target, requested, None, last_known=True)
+            bounds = self.bounds
+            available = [bounds[c] for c in (source, target) if c != "EUR" and c in bounds]
+            if len(available) != sum(c != "EUR" for c in (source, target)):
+                raise
+            first = max(bound.first_date for bound in available)
+            last = min(bound.last_date for bound in available)
+            outside = requested < first or requested > last
+            if outside:
+                if not self.fallback_on_wrong_date:
+                    raise
+                # Clamp to the first or last common usable row, never fabricate rates.
+                boundary = first if requested < first else last
+                return self._lookup_quote(source, target, boundary, None,
+                                          last_known=requested > last)
+            if not self.fallback_on_missing_rate:
+                raise
+            return self._lookup_quote(source, target, requested, None, last_known=True)
 
 
 def get_rate(from_currency: str, to_currency: str,

@@ -3,6 +3,8 @@ from .assets import add_asset
 from .conversion import (
     ConversionError,
     Converter,
+    CurrencyBounds,
+    CurrencyConverter,
     RateNotFoundError,
     RateQuote,
     UnknownCurrencyError,
@@ -16,6 +18,8 @@ __all__ = [
     "Asset",
     "ConversionError",
     "Converter",
+    "CurrencyBounds",
+    "CurrencyConverter",
     "RateNotFoundError",
     "RateQuote",
     "UnknownCurrencyError",
