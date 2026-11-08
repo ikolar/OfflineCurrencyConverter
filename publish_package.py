@@ -1,15 +1,14 @@
-#!/usr/bin/env python3
 """Build a dated distribution with the latest CSV; optionally publish to PyPI."""
 from __future__ import annotations
 
 import argparse
 import csv
-from datetime import date, datetime
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+from datetime import date, datetime
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
@@ -32,8 +31,10 @@ def latest_snapshot(output_dir: Path) -> Path:
     return max(candidates)[1]
 
 
-def stage_package(destination: Path, snapshot: Path, release_date: date) -> str:
+def stage_package(destination: Path, snapshot: Path, release_date: date, revision: int = 0) -> str:
     version = release_date.strftime("%Y.%m.%d")
+    if revision:
+        version += f".post{revision}"
     package = destination / "crypto_exchangerate"
     shutil.copytree(ROOT / "crypto_exchangerate", package,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "data"))

@@ -369,6 +369,46 @@ conversion so that later backfills are auditable.
 
 ## Conversion library
 
+### Offline rate quotes
+
+`get_rate()` returns an immutable `RateQuote` with a `Decimal` multiplier,
+the actual selected observation's `rate_date` (`datetime.date`), and
+`snapshot_version`. The multiplier is **destination units per one source unit**:
+
+```python
+from crypto_exchangerate import Converter, get_rate, convert
+from decimal import Decimal
+
+quote = get_rate("USD", "EUR", transaction_date="2026-11-02", date_window=30)
+euro_amount = Decimal("100") * quote.rate
+print(quote.rate_date, quote.snapshot_version)
+
+converter = Converter()  # Load the snapshot once for repeated lookups.
+quote = converter.get_rate("BTC", "EUR", "2026-11-02", 30)
+amount = converter.convert("0.01", "BTC", "EUR", "2026-11-02", 30)
+# Equivalent to Decimal("0.01") * quote.rate, without monetary rounding.
+```
+
+CSV rates remain currency units per EUR; the quote is destination-per-EUR
+divided by source-per-EUR. EUR's rate is 1. Both currencies must have usable
+rates on the same row. The nearest observation within the inclusive window
+wins, with an earlier-date tie break. `rate_date` can differ from the requested
+date. Identical supported currencies return 1 and the resolved requested date,
+even without a historical observation.
+
+`snapshot_version` is the filename date such as `"2026.11.09"`, captured when
+the CSV is loaded. Custom filenames without a recognized dated snapshot name
+return `None`. This identifies the snapshot, not the provenance of each
+observation. A wheel's `.post1` revision is a code revision and is not part of
+this snapshot date. No lookup fetches data or updates snapshots.
+
+The module-level `get_rate()` accepts `rates_path=` and `output_dir=` just like
+`convert()`. Both APIs default to yesterday in Europe/Amsterdam and a +/-10-day
+window; explicit `None` means today. **Explicitly pass your selected transaction
+date and `date_window=30` when that is your required policy.** Invalid dates or
+windows raise `ValueError`; unsupported symbols raise `UnknownCurrencyError`;
+missing usable observations raise `RateNotFoundError`.
+
 Use the latest local CSV snapshot without network requests:
 
 ```python
@@ -445,7 +485,7 @@ with the generated CSV snapshot and Python conversion wrapper, and uploads it
 as a workflow artifact named `crypto-exchangerate-wheel-RUN_ID-RUN_ATTEMPT`.
 It also commits the wheel to `output/` alongside the CSV and Excel snapshot.
 The wheel version follows the snapshot date (for example, a snapshot dated
-`2026.11.08` produces `crypto_exchangerate-2026.11.8-py3-none-any.whl`;
+`2026.11.09` produces `crypto_exchangerate-2026.11.9.post1-py3-none-any.whl`;
 Python packaging normalizes leading zeros in version numbers).
 Download and unzip the artifact from the workflow run, then install the wheel:
 
@@ -486,6 +526,9 @@ snapshot's filename date, and writes to `dist/YYYY.MM.DD/`. Use `--output-dir`
 or `--dist-dir` to choose other directories. Existing build directories are
 rejected. The wheel preserves blanks and `ERROR` cells from the generated data;
 conversion skips unusable rates. It bundles only the newest CSV, not Excel files.
+The rate-quote API uses post-release revision 1 by default (`YYYY.M.D.post1`),
+so it upgrades the earlier date-only build. `--revision N` selects a revision;
+use a higher revision when republishing changed code for the same snapshot.
 Dependencies must be installed from an accessible package index or wheelhouse.
 Workflow artifacts are retained for 90 days; copy approved wheels to a private
 GitHub Release or corporate package index for long-term installation.

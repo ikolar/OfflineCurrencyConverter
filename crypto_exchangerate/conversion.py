@@ -2,15 +2,25 @@
 from __future__ import annotations
 
 import csv
+import re
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-import re
 
 from .core import LOCAL_TZ, OUTPUT_DIR, OUTPUT_PREFIX
 
 _DEFAULT_DATE = object()
 DEFAULT_DATE_WINDOW = 10
+
+
+@dataclass(frozen=True)
+class RateQuote:
+    """Destination units per source unit, with observation and snapshot dates."""
+
+    rate: Decimal
+    rate_date: date
+    snapshot_version: str | None
 
 
 class ConversionError(ValueError):
@@ -71,6 +81,18 @@ class Converter:
                 raise RateNotFoundError(f"No rate snapshot found in {output_dir}; generate or download a snapshot first")
             rates_path = max(candidates, key=lambda p: p.name)
         self.rates_path = Path(rates_path)
+        match = re.fullmatch(
+            rf"{re.escape(OUTPUT_PREFIX)}\.(\d{{4}}\.\d{{2}}\.\d{{2}})\.csv",
+            self.rates_path.name,
+        )
+        self.snapshot_version = None
+        if match:
+            try:
+                date.fromisoformat(match.group(1).replace(".", "-"))
+            except ValueError:
+                pass
+            else:
+                self.snapshot_version = match.group(1)
         with self.rates_path.open(newline="", encoding="utf-8-sig") as stream:
             reader = csv.DictReader(stream)
             if not reader.fieldnames or "Date" not in reader.fieldnames:
@@ -78,9 +100,10 @@ class Converter:
             self.currencies = frozenset(reader.fieldnames) - {"Date"} | {"EUR"}
             self._rows = [(date.fromisoformat(row["Date"]), row) for row in reader]
 
-    def convert(self, amount, from_currency: str, to_currency: str,
-                transaction_date=_DEFAULT_DATE, date_window: int = DEFAULT_DATE_WINDOW) -> Decimal:
-        """Return a Decimal amount; date_window is inclusive in both directions."""
+    def get_rate(self, from_currency: str, to_currency: str,
+                 transaction_date=_DEFAULT_DATE,
+                 date_window: int = DEFAULT_DATE_WINDOW) -> RateQuote:
+        """Return an offline multiplier and actual observation date within +/-window."""
         if isinstance(date_window, bool) or not isinstance(date_window, int) or date_window < 0:
             raise ValueError("date_window must be a non-negative integer")
         target_date = _date(transaction_date)
@@ -90,14 +113,8 @@ class Converter:
                 raise UnknownCurrencyError(f"Unknown currency: {currency!r}")
             currencies.append(currency.strip().upper())
         source, target = currencies
-        try:
-            number = Decimal(str(amount))
-        except (InvalidOperation, ValueError):
-            raise ValueError("amount must be a finite number") from None
-        if not number.is_finite():
-            raise ValueError("amount must be a finite number")
         if source == target:
-            return number
+            return RateQuote(Decimal(1), target_date, self.snapshot_version)
         candidates = sorted(
             ((day, row) for day, row in self._rows if abs((day - target_date).days) <= date_window),
             key=lambda item: (abs((item[0] - target_date).days), item[0]),
@@ -107,10 +124,33 @@ class Converter:
             rates = {c: Decimal(1) if c == "EUR" else _rate(row.get(c, "")) for c in currencies}
             available.update(c for c, rate in rates.items() if rate is not None)
             if all(rate is not None for rate in rates.values()):
-                return number / rates[source] * rates[target]
+                return RateQuote(rates[target] / rates[source], day, self.snapshot_version)
         missing = [c for c in dict.fromkeys(currencies) if c != "EUR" and c not in available]
         detail = f" for {', '.join(missing)}" if missing else f" on a common date for {source} and {target}"
         raise RateNotFoundError(f"Cannot get a rate{detail} within +/-{date_window} days of {target_date}")
+
+
+    def convert(self, amount, from_currency: str, to_currency: str,
+                transaction_date=_DEFAULT_DATE, date_window: int = DEFAULT_DATE_WINDOW) -> Decimal:
+        """Multiply a validated Decimal amount by one quote, without currency rounding."""
+        quote = self.get_rate(from_currency, to_currency, transaction_date, date_window)
+        try:
+            number = Decimal(str(amount))
+        except (InvalidOperation, ValueError):
+            raise ValueError("amount must be a finite number") from None
+        if not number.is_finite():
+            raise ValueError("amount must be a finite number")
+        return number * quote.rate
+
+
+def get_rate(from_currency: str, to_currency: str,
+             transaction_date=_DEFAULT_DATE, date_window: int = DEFAULT_DATE_WINDOW,
+             *, rates_path: str | Path | None = None,
+             output_dir: str | Path | None = None) -> RateQuote:
+    """Look up destination units per source unit from local or bundled data."""
+    return Converter(rates_path, output_dir=output_dir).get_rate(
+        from_currency, to_currency, transaction_date, date_window,
+    )
 
 
 def convert(amount, from_currency: str, to_currency: str,

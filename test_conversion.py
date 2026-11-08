@@ -1,15 +1,21 @@
 """Conversion lookup, cross rates, and public API behavior."""
 import csv
-from contextlib import redirect_stdout, redirect_stderr
-from io import StringIO
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import date
 from decimal import Decimal
+from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 from unittest.mock import patch
 
-from crypto_exchangerate import Converter, convert, supported_currencies, UnknownCurrencyError, RateNotFoundError
+from crypto_exchangerate import (
+    Converter,
+    RateNotFoundError,
+    UnknownCurrencyError,
+    convert,
+    supported_currencies,
+)
 from crypto_exchangerate.cli import main
 
 
@@ -74,9 +80,8 @@ class ConversionTests(unittest.TestCase):
     def test_latest_snapshot_and_explicit_path(self):
         self.assertEqual(convert(100, 'USD', 'EUR', '2026-01-01', 0, output_dir=self.temp.name), Decimal(50))
         self.assertEqual(convert(100, 'USD', 'EUR', '2026-01-01', rates_path=self.path), Decimal(50))
-        with TemporaryDirectory() as empty:
-            with self.assertRaises(RateNotFoundError):
-                Converter(output_dir=empty)
+        with TemporaryDirectory() as empty, self.assertRaises(RateNotFoundError):
+            Converter(output_dir=empty)
 
     def test_supported_currencies_and_offline_commands(self):
         expected = ['BTC', 'EUR', 'JPY', 'SIT', 'USD']
@@ -89,7 +94,7 @@ class ConversionTests(unittest.TestCase):
         with redirect_stdout(output):
             self.assertEqual(main(['convert', '100', 'USD', 'EUR', '--date', '2026-01-01',
                                    '--date-window', '0', '--rates-path', str(self.path)]), 0)
-        self.assertEqual(output.getvalue().strip(), '50')
+        self.assertEqual(Decimal(output.getvalue().strip()), Decimal(50))
         with redirect_stderr(StringIO()), self.assertRaises(SystemExit) as failure:
             main(['convert', '100', 'XYZ', 'EUR', '--rates-path', str(self.path)])
         self.assertEqual(failure.exception.code, 2)
