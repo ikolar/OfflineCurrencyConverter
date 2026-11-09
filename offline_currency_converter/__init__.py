@@ -1,5 +1,6 @@
 """ECB fiat and CoinMarketCap cryptocurrency reference rates."""
-from .assets import add_asset
+from importlib import import_module
+
 from .conversion import (
     ConversionError,
     Converter,
@@ -12,7 +13,6 @@ from .conversion import (
     get_rate,
     supported_currencies,
 )
-from .core import Asset, generate_rates
 
 __all__ = [
     "Asset",
@@ -30,3 +30,13 @@ __all__ = [
     "supported_currencies",
 ]
 from ._version import __version__ as __version__
+
+
+def __getattr__(name):
+    """Load generation tools only when explicitly requested."""
+    modules = {"Asset": ".core", "generate_rates": ".core", "add_asset": ".assets"}
+    if name not in modules:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(modules[name], __name__), name)
+    globals()[name] = value
+    return value

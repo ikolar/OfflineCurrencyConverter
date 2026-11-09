@@ -3,7 +3,6 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import core
 from .conversion import CurrencyConverter
 
 
@@ -47,6 +46,8 @@ def main(argv=None) -> int:
         return conversion_main(["convert", *argv])
     if argv and argv[0] in {"convert", "currencies"}:
         return conversion_main(argv)
+    from . import core
+
     parser = argparse.ArgumentParser(epilog="Offline commands: convert AMOUNT FROM TO [--date YYYY-MM-DD]; currencies. Use COMMAND --help for options.")
     parser.add_argument("--output-dir", type=Path, default=core.OUTPUT_DIR)
     parser.add_argument("--ecb-cache-dir", type=Path, default=core.ECB_CACHE_DIR)

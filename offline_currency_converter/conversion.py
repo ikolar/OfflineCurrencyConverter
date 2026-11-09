@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import NamedTuple
 
-from .core import LOCAL_TZ, OUTPUT_DIR, OUTPUT_PREFIX
+from ._constants import LOCAL_TZ, OUTPUT_DIR, OUTPUT_PREFIX
 
 _DEFAULT_DATE = object()
 DEFAULT_DATE_WINDOW = 10
