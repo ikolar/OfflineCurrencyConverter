@@ -10,6 +10,7 @@ from .conversion import (
     RateQuote,
     UnknownCurrencyError,
     convert,
+    export_rates,
     get_rate,
     supported_currencies,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "UnknownCurrencyError",
     "add_asset",
     "convert",
+    "export_rates",
     "generate_rates",
     "get_rate",
     "supported_currencies",

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import csv
 import re
+import shutil
+import sys
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -107,6 +109,20 @@ class Converter:
                 raise ConversionError("Rate snapshot must contain a Date column")
             self.currencies = frozenset(reader.fieldnames) - {"Date"} | {"EUR"}
             self._rows = [(date.fromisoformat(row["Date"]), row) for row in reader]
+
+    def export_rates(self, destination: str | Path | None = None) -> Path | None:
+        """Copy the selected CSV to a file, or write it to stdout by default.
+
+        File exports preserve the original bytes and overwrite an existing
+        destination. No data is fetched or regenerated.
+        """
+        if destination is None:
+            with self.rates_path.open(encoding="utf-8", newline="") as source:
+                shutil.copyfileobj(source, sys.stdout)
+            return None
+        destination = Path(destination)
+        shutil.copyfile(self.rates_path, destination)
+        return destination
 
     @property
     def bounds(self) -> dict[str, CurrencyBounds]:
@@ -262,3 +278,10 @@ def supported_currencies(*, rates_path: str | Path | None = None,
                          output_dir: str | Path | None = None) -> list[str]:
     """Return sorted snapshot symbols, including EUR; dates may have rate gaps."""
     return sorted(Converter(rates_path, output_dir=output_dir).currencies)
+
+
+def export_rates(destination: str | Path | None = None, *,
+                 rates_path: str | Path | None = None,
+                 output_dir: str | Path | None = None) -> Path | None:
+    """Export the selected local or bundled snapshot to stdout or a CSV file."""
+    return Converter(rates_path, output_dir=output_dir).export_rates(destination)

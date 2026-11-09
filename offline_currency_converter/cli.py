@@ -17,7 +17,9 @@ def conversion_main(argv) -> int:
     conversion.add_argument("--date", help="Transaction date; defaults to the latest common observation")
     conversion.add_argument("--date-window", type=int, default=None)
     currencies = commands.add_parser("currencies", help="List snapshot symbols, including EUR")
-    for command in (conversion, currencies):
+    export = commands.add_parser("export-rates", help="Print the selected rates CSV or save it to a file")
+    export.add_argument("destination", nargs="?", type=Path, help="CSV destination; omitted writes to stdout")
+    for command in (conversion, currencies, export):
         source = command.add_mutually_exclusive_group()
         source.add_argument("--rates-path", type=Path)
         source.add_argument("--output-dir", type=Path)
@@ -26,6 +28,8 @@ def conversion_main(argv) -> int:
         converter = CurrencyConverter(args.rates_path, output_dir=args.output_dir, decimal=True)
         if args.command == "currencies":
             print("\n".join(sorted(converter.currencies)))
+        elif args.command == "export-rates":
+            converter.export_rates(args.destination)
         else:
             kwargs = {"date_window": args.date_window}
             if args.date is not None:
@@ -42,13 +46,13 @@ def conversion_main(argv) -> int:
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     # Also accept the CurrencyConverter-style shorthand: 100 USD --to EUR.
-    if argv and not argv[0].startswith("--") and argv[0] not in {"convert", "currencies", "-h"}:
+    if argv and not argv[0].startswith("--") and argv[0] not in {"convert", "currencies", "export-rates", "-h"}:
         return conversion_main(["convert", *argv])
-    if argv and argv[0] in {"convert", "currencies"}:
+    if argv and argv[0] in {"convert", "currencies", "export-rates"}:
         return conversion_main(argv)
     from . import core
 
-    parser = argparse.ArgumentParser(epilog="Offline commands: convert AMOUNT FROM TO [--date YYYY-MM-DD]; currencies. Use COMMAND --help for options.")
+    parser = argparse.ArgumentParser(epilog="Offline commands: convert AMOUNT FROM TO [--date YYYY-MM-DD]; currencies; export-rates [CSV]. Use COMMAND --help for options.")
     parser.add_argument("--output-dir", type=Path, default=core.OUTPUT_DIR)
     parser.add_argument("--ecb-cache-dir", type=Path, default=core.ECB_CACHE_DIR)
     parser.add_argument("--force", action="store_true", help="Redownload ECB ZIPs regardless of cache freshness.")

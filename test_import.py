@@ -21,7 +21,7 @@ class BlockGenerationImports(importlib.abc.MetaPathFinder):
             raise AssertionError(f'Unexpected generation import: {fullname}')
 
 sys.meta_path.insert(0, BlockGenerationImports())
-from offline_currency_converter import CurrencyConverter, get_rate
+from offline_currency_converter import CurrencyConverter, export_rates, get_rate
 from offline_currency_converter.cli import main
 with TemporaryDirectory() as directory:
     path = Path(directory) / 'custom.csv'
@@ -30,6 +30,9 @@ with TemporaryDirectory() as directory:
     assert converter.convert('100', 'USD') == 50
     assert get_rate('USD', 'EUR', '2026-11-02', 0, rates_path=path).rate_date.isoformat() == '2026-11-02'
     assert main(['100', 'USD', '--rates-path', str(path)]) == 0
+    exported = Path(directory) / 'export.csv'
+    export_rates(exported, rates_path=path)
+    assert exported.read_bytes() == path.read_bytes()
 '''
         result = subprocess.run([sys.executable, '-c', script], cwd=Path(__file__).parent,
                                 capture_output=True, text=True, check=False)

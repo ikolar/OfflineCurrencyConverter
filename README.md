@@ -199,6 +199,35 @@ By default, the newest filename-dated snapshot is selected across local
 `output/` and the package's bundled data. `output_dir=` restricts selection to
 a chosen directory. URL and ZIP inputs are not supported.
 
+### Export the rates CSV
+
+Print the selected snapshot to stdout or copy it to a CSV file:
+
+```python
+from offline_currency_converter import export_rates
+
+export_rates()                  # Write CSV content to stdout.
+export_rates("rates.csv")       # Save CSV; overwrite the destination if it exists.
+
+# Export the snapshot selected by an existing converter:
+c.export_rates("rates.csv")
+```
+
+The module function accepts `rates_path=` or `output_dir=` to choose the source,
+just like the other convenience functions. With no explicit source, it exports
+the newest snapshot across bundled data and local `output/`. The converter
+method exports its selected `rates_path`. File exports preserve the original
+CSV bytes, including blank and `ERROR` cells and full rate precision. No
+observations are filled, converted, or downloaded. The function returns the
+written `Path`, or `None` when writing to stdout. Destination parent directories
+must already exist; exporting over the source itself raises `SameFileError`.
+
+```sh
+offline-currency-converter export-rates                  # stdout
+offline-currency-converter export-rates rates.csv        # save to file
+offline-currency-converter export-rates --rates-path custom.csv
+```
+
 ### Exceptions
 
 - `UnknownCurrencyError`: a requested symbol is not supported by the snapshot.
