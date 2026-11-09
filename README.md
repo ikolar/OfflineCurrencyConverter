@@ -1,9 +1,9 @@
-# OfflineCurrencyCoverter
+# OfflineCurrencyConverter
 
 Historical fiat and cryptocurrency conversion for offline Python applications.
 Requires Python 3.10 or newer.
 
-OfflineCurrencyCoverter follows the familiar
+OfflineCurrencyConverter follows the familiar
 [CurrencyConverter API](https://github.com/alexprengere/currencyconverter),
 including `CurrencyConverter`, `convert()`, `date=`, currency bounds, and
 optional fallback settings. It extends this interface with cryptocurrency
@@ -46,14 +46,14 @@ Download a wheel from [`output/`](output/), then install it in a virtual environ
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/offlinecurrencycoverter-2026.11.9-py3-none-any.whl
+python -m pip install /path/to/offlinecurrencyconverter-2026.11.9-py3-none-any.whl
 ```
 
 For air-gapped systems, make the wheel and its dependencies available through
 an internal PyPI mirror or a local wheelhouse. For example:
 
 ```sh
-python -m pip install --no-index --find-links=/path/to/wheelhouse OfflineCurrencyCoverter
+python -m pip install --no-index --find-links=/path/to/wheelhouse OfflineCurrencyConverter
 ```
 
 The wheel bundles the rates, but its dependencies must also be installed.
@@ -65,7 +65,7 @@ To replace an installed build with an updated wheel of the same version, use
 Create a converter once and reuse it:
 
 ```python
-from offline_currency_coverter import CurrencyConverter
+from offline_currency_converter import CurrencyConverter
 
 c = CurrencyConverter()
 euros = c.convert(100, "USD")          # EUR is the default destination.
@@ -92,7 +92,7 @@ results, and pass string or `Decimal` amounts to preserve input precision:
 
 ```python
 from decimal import Decimal, ROUND_HALF_UP
-from offline_currency_coverter import CurrencyConverter
+from offline_currency_converter import CurrencyConverter
 
 c = CurrencyConverter(decimal=True)
 eur = c.convert("100", "USD", date="2026-11-02")
@@ -205,12 +205,12 @@ Blank, `ERROR`, zero, negative, and non-finite rates are never used for conversi
 ## Command line
 
 ```sh
-offline-currency-coverter 100 USD --to EUR
-offline-currency-coverter 100 USD --to EUR --date 2026-11-02 --date-window 30
-offline-currency-coverter currencies
+offline-currency-converter 100 USD --to EUR
+offline-currency-converter 100 USD --to EUR --date 2026-11-02 --date-window 30
+offline-currency-converter currencies
 ```
 
-The equivalent module command is `python -m offline_currency_coverter` followed
+The equivalent module command is `python -m offline_currency_converter` followed
 by the same arguments. Use `--rates-path /path/to/snapshot.csv` for an explicit
 CSV. Commands use the latest common observation when no date is supplied;
 with `--date`, supply `--date-window` if an exact match is not required.
@@ -230,7 +230,7 @@ Europe/Amsterdam, interpret explicit `None` as today, and default to a +/-10-day
 window. They always use `Decimal` amounts and rates:
 
 ```python
-from offline_currency_coverter import get_rate, convert
+from offline_currency_converter import get_rate, convert
 
 quote = get_rate("USD", "EUR", transaction_date="2026-11-02", date_window=30)
 amount = convert("100", "USD", "EUR", transaction_date="2026-11-02", date_window=30)

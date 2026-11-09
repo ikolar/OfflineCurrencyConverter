@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "OfflineCurrencyCoverter"
+name = "OfflineCurrencyConverter"
 version = "0.1.0"
 description = "ECB and cryptocurrency historical rates with EUR cross-conversion"
 readme = "README.md"
@@ -11,11 +11,11 @@ requires-python = ">=3.10"
 dependencies = ["pandas>=2.2,<3.0", "requests>=2.32,<3.0", "openpyxl>=3.1,<4.0"]
 
 [project.scripts]
-offline-currency-coverter = "offline_currency_coverter.cli:main"
+offline-currency-converter = "offline_currency_converter.cli:main"
 
 [tool.setuptools]
-packages = ["offline_currency_coverter"]
+packages = ["offline_currency_converter"]
 include-package-data = false
 
 [tool.setuptools.package-data]
-offline_currency_coverter = ["assets.json", "data/*.csv"]
+offline_currency_converter = ["assets.json", "data/*.csv"]

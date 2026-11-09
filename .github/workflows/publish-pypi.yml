@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/OfflineCurrencyCoverter/
+      url: https://pypi.org/project/OfflineCurrencyConverter/
     permissions:
       id-token: write
     steps:

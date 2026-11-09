@@ -1,6 +1,6 @@
-"""Compatibility wrapper; implementation lives in offline_currency_coverter.assets."""
+"""Compatibility wrapper; implementation lives in offline_currency_converter.assets."""
 import sys
-from offline_currency_coverter import assets as _implementation
+from offline_currency_converter import assets as _implementation
 
 if __name__ == "__main__":
     raise SystemExit(_implementation.main())

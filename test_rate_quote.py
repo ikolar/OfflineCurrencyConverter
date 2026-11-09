@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import test_conversion
-from offline_currency_coverter import (
+from offline_currency_converter import (
     Converter,
     RateNotFoundError,
     RateQuote,
@@ -62,7 +62,7 @@ class RateQuoteTests(unittest.TestCase):
                 self.converter.get_rate(invalid, invalid)
         self.assertEqual(self.converter.get_rate('sit', ' SIT ', '2000-01-01', 0),
                          RateQuote(Decimal(1), date(2000, 1, 1), '2026.01.05'))
-        with patch('offline_currency_coverter.conversion._today', return_value=date(2026, 1, 4)):
+        with patch('offline_currency_converter.conversion._today', return_value=date(2026, 1, 4)):
             self.assertEqual(self.converter.get_rate('EUR', 'EUR').rate_date, date(2026, 1, 3))
             self.assertEqual(self.converter.get_rate('EUR', 'EUR', None).rate_date, date(2026, 1, 4))
 
@@ -78,7 +78,7 @@ class RateQuoteTests(unittest.TestCase):
             data.mkdir()
             path = data / self.path.name
             path.write_bytes(self.path.read_bytes())
-            with patch('offline_currency_coverter.conversion.__file__', str(root / 'conversion.py')), patch('offline_currency_coverter.conversion.OUTPUT_DIR', root / 'absent'):
+            with patch('offline_currency_converter.conversion.__file__', str(root / 'conversion.py')), patch('offline_currency_converter.conversion.OUTPUT_DIR', root / 'absent'):
                 self.assertEqual(get_rate('USD', 'EUR', '2026-01-01', 0).snapshot_version, '2026.01.05')
 
     def test_convert_uses_exactly_one_quote_and_offline(self):

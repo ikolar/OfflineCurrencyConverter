@@ -35,8 +35,8 @@ def stage_package(destination: Path, snapshot: Path, release_date: date, revisio
     version = release_date.strftime("%Y.%m.%d")
     if revision:
         version += f".post{revision}"
-    package = destination / "offline_currency_coverter"
-    shutil.copytree(ROOT / "offline_currency_coverter", package,
+    package = destination / "offline_currency_converter"
+    shutil.copytree(ROOT / "offline_currency_converter", package,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "data"))
     (package / "data").mkdir()
     shutil.copy2(snapshot, package / "data" / snapshot.name)
@@ -65,7 +65,7 @@ def main(argv=None) -> int:
     # Fetching is mandatory: never silently package an old snapshot after failure.
     fetch_date = datetime.now(ZoneInfo("Europe/Amsterdam")).date()
     subprocess.run([
-        sys.executable, "-m", "offline_currency_coverter", "--output-dir", str(args.output_dir.resolve()),
+        sys.executable, "-m", "offline_currency_converter", "--output-dir", str(args.output_dir.resolve()),
         "--run-date", fetch_date.isoformat(),
     ], cwd=ROOT, check=True)
     snapshot = latest_snapshot(args.output_dir.resolve())
@@ -77,10 +77,10 @@ def main(argv=None) -> int:
     with snapshot.open(newline="", encoding="utf-8-sig") as stream:
         if any(value.strip() == "ERROR" for row in csv.reader(stream) for value in row):
             raise RuntimeError(f"Fetcher recorded download errors in {snapshot}; release aborted")
-    with TemporaryDirectory(prefix="offline-currency-coverter-release-") as directory:
+    with TemporaryDirectory(prefix="offline-currency-converter-release-") as directory:
         stage = Path(directory)
         version = stage_package(stage, snapshot, release_date)
-        print(f"Building offline-currency-coverter {version} with {snapshot.name}", flush=True)
+        print(f"Building offline-currency-converter {version} with {snapshot.name}", flush=True)
         build_args = ["--no-isolation"] if args.no_isolation else []
         subprocess.run([sys.executable, "-m", "build", *build_args, "--outdir", str(destination), str(stage)], check=True)
     artifacts = sorted(destination.glob("*.whl")) + sorted(destination.glob("*.tar.gz"))

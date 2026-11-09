@@ -377,21 +377,21 @@ conversion so that later backfills are auditable.
 
 The **Update ECB + crypto rates** workflow also tests the code, builds a wheel
 with the generated CSV snapshot and Python conversion wrapper, and uploads it
-as a workflow artifact named `offline-currency-coverter-wheel-RUN_ID-RUN_ATTEMPT`.
+as a workflow artifact named `offline-currency-converter-wheel-RUN_ID-RUN_ATTEMPT`.
 It also commits the wheel to `output/` alongside the CSV and Excel snapshot.
 The wheel version follows the snapshot date (for example, a snapshot dated
-`2026.11.09` produces `offlinecurrencycoverter-2026.11.9-py3-none-any.whl`;
+`2026.11.09` produces `offlinecurrencyconverter-2026.11.9-py3-none-any.whl`;
 Python packaging normalizes leading zeros in version numbers).
 Download and unzip the artifact from the workflow run, then install the wheel:
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install /path/to/offlinecurrencycoverter-YYYY.M.D-py3-none-any.whl
+python -m pip install /path/to/offlinecurrencyconverter-YYYY.M.D-py3-none-any.whl
 
-offline-currency-coverter currencies
-offline-currency-coverter convert 100 USD EUR --date 2026-11-02 --date-window 0
-# The same commands work through python -m offline_currency_coverter.
+offline-currency-converter currencies
+offline-currency-converter convert 100 USD EUR --date 2026-11-02 --date-window 0
+# The same commands work through python -m offline_currency_converter.
 ```
 
 Conversion and currency listing use local or bundled data without network
@@ -403,7 +403,7 @@ symbol, including historical currencies; a listed currency may lack rates for
 the requested date. Python callers can use:
 
 ```python
-from offline_currency_coverter import convert, supported_currencies
+from offline_currency_converter import convert, supported_currencies
 
 print(supported_currencies())
 print(convert("100", "USD", "EUR", "2026-11-02", 0))
@@ -460,7 +460,7 @@ python publish_package.py --publish --dist-dir publish-dist
 python publish_package.py --publish --repository testpypi --dist-dir test-dist
 ```
 
-The distribution name is `OfflineCurrencyCoverter`; your PyPI account must be allowed
+The distribution name is `OfflineCurrencyConverter`; your PyPI account must be allowed
 to publish under that name. Authentication and upload errors fail the script.
 Never commit API tokens. Without `--publish`, nothing is uploaded. PyPI versions
 cannot be overwritten, so this scheme permits one release per calendar date.
@@ -470,11 +470,11 @@ to `2026.11.3`; these identify the same release.
 After publication:
 
 ```sh
-pip install OfflineCurrencyCoverter==2026.11.3
+pip install OfflineCurrencyConverter==2026.11.3
 ```
 
 ```python
-from offline_currency_coverter import convert
+from offline_currency_converter import convert
 amount = convert(100, "USD", "EUR", "2026-01-01", 10)
 ```
 
@@ -503,7 +503,7 @@ token. Configure these once:
    For a new project, use **Your account → Publishing → Add a new pending publisher**.
    Enter your actual GitHub owner and repository, workflow filename
    `publish-pypi.yml`, and environment name `pypi`. For a pending publisher,
-   use project name `OfflineCurrencyCoverter` (the name must be available).
+   use project name `OfflineCurrencyConverter` (the name must be available).
 4. Keep the fetcher's optional `CMC_API_KEY` in repository **Settings → Secrets
    and variables → Actions → New repository secret**. It is used during fetching;
    the PyPI publishing job does not receive it.

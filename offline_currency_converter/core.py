@@ -73,8 +73,8 @@ CHUNK_DAYS = 180
 
 # sunshine is the best medicine
 USER_AGENT = (
-    "OfflineCurrencyCoverter/1.0 "
-    "(https://github.com/ikolar/OfflineCurrencyCoverter; daily reference-data job)"
+    "OfflineCurrencyConverter/1.0 "
+    "(https://github.com/ikolar/OfflineCurrencyConverter; daily reference-data job)"
 )
 
 # keywords used to check whether we were blocked when attempting to download
@@ -318,7 +318,7 @@ def read_config(config_path: Path | None = None) -> dict:
     from importlib.resources import files
 
     path = Path(config_path) if config_path is not None else ASSET_CONFIG
-    source = path if config_path is not None or path.exists() else files("offline_currency_coverter").joinpath("assets.json")
+    source = path if config_path is not None or path.exists() else files("offline_currency_converter").joinpath("assets.json")
     return json.loads(source.read_text(encoding="utf-8"))
 
 

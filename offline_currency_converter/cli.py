@@ -8,7 +8,7 @@ from .conversion import CurrencyConverter
 
 
 def conversion_main(argv) -> int:
-    parser = argparse.ArgumentParser(prog="offline-currency-coverter")
+    parser = argparse.ArgumentParser(prog="offline-currency-converter")
     commands = parser.add_subparsers(dest="command", required=True)
     conversion = commands.add_parser("convert", help="Convert using local or bundled rates (offline)")
     conversion.add_argument("amount")

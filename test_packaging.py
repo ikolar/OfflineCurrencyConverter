@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from offline_currency_coverter import Converter
+from offline_currency_converter import Converter
 from publish_package import latest_snapshot, stage_package
 
 
@@ -23,9 +23,9 @@ class PackagingTests(unittest.TestCase):
             stage.mkdir()
             version = stage_package(stage, selected, date(2026, 11, 3))
             self.assertEqual(version, '2026.11.03')
-            self.assertEqual([p.name for p in (stage / 'offline_currency_coverter/data').iterdir()], [selected.name])
+            self.assertEqual([p.name for p in (stage / 'offline_currency_converter/data').iterdir()], [selected.name])
             self.assertIn('version = "2026.11.03"', (stage / 'pyproject.toml').read_text())
-            self.assertIn('2026.11.03', (stage / 'offline_currency_coverter/_version.py').read_text())
+            self.assertIn('2026.11.03', (stage / 'offline_currency_converter/_version.py').read_text())
 
     def test_bundled_fallback_and_newer_local_snapshot(self):
         with TemporaryDirectory() as directory:
@@ -37,7 +37,7 @@ class PackagingTests(unittest.TestCase):
             local.mkdir()
             bundled = data / 'eurofxref_and_crypto_rates.2026.11.01.csv'
             bundled.write_text('Date,USD\n2026-10-31,2\n')
-            with patch('offline_currency_coverter.conversion.__file__', str(package / 'conversion.py')), patch('offline_currency_coverter.conversion.OUTPUT_DIR', local):
+            with patch('offline_currency_converter.conversion.__file__', str(package / 'conversion.py')), patch('offline_currency_converter.conversion.OUTPUT_DIR', local):
                 self.assertEqual(Converter().rates_path, bundled)
                 newer = local / 'eurofxref_and_crypto_rates.2026.11.02.csv'
                 newer.write_text('Date,USD\n2026-11-01,3\n')
@@ -52,7 +52,7 @@ class PackagingTests(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 main(['--publish', '--dist-dir', directory])
             self.assertEqual(run.call_count, 1)
-            self.assertIn('offline_currency_coverter', run.call_args.args[0])
+            self.assertIn('offline_currency_converter', run.call_args.args[0])
             stage.assert_not_called()
 
     def test_missing_snapshot_or_error_cells_prevent_build(self):

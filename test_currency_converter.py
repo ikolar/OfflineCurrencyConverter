@@ -7,12 +7,12 @@ from io import StringIO
 from unittest.mock import patch
 
 import test_conversion
-from offline_currency_coverter import (
+from offline_currency_converter import (
     CurrencyBounds,
     CurrencyConverter,
     RateNotFoundError,
 )
-from offline_currency_coverter.cli import main
+from offline_currency_converter.cli import main
 
 
 class CurrencyConverterTests(unittest.TestCase):
@@ -40,7 +40,7 @@ class CurrencyConverterTests(unittest.TestCase):
 
     def test_latest_default_and_explicit_window(self):
         converter = CurrencyConverter(output_dir=self.temp.name, decimal=True)
-        with patch('offline_currency_coverter.conversion._today', return_value=date(2026, 1, 4)):
+        with patch('offline_currency_converter.conversion._today', return_value=date(2026, 1, 4)):
             self.assertEqual(converter.get_rate('EUR').rate_date, date(2026, 1, 4))
             self.assertEqual(converter.get_rate('USD', date=None).rate_date, date(2026, 1, 3))
         with self.assertRaises(RateNotFoundError):
