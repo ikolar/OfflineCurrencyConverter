@@ -2,10 +2,12 @@ name: Publish Python package to PyPI
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Update ECB + crypto rates"]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+    inputs:
+      snapshot-run-id:
+        description: Successful update run providing the rates-snapshot artifact
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,13 +20,7 @@ concurrency:
 jobs:
   build:
     # Only publish code from the repository's default branch.
-    if: >-
-      (github.event_name == 'workflow_dispatch' &&
-       github.ref_name == github.event.repository.default_branch) ||
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == github.event.repository.default_branch &&
-       github.event.workflow_run.head_repository.full_name == github.repository)
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -49,7 +45,7 @@ jobs:
         run: python -m unittest discover -v
 
       - name: Restore ECB downloads
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.snapshot-run-id == ''
         uses: actions/cache@v4
         with:
           path: .cache/ecb
@@ -58,17 +54,17 @@ jobs:
             ecb-zip-v1-${{ runner.os }}-
 
       - name: Download the successful update's snapshot
-        if: github.event_name == 'workflow_run'
+        if: inputs.snapshot-run-id != ''
         uses: actions/download-artifact@v4
         with:
           name: rates-snapshot
           path: downloaded-snapshot/
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ inputs.snapshot-run-id }}
 
       - name: Build and validate the updated snapshot
-        if: github.event_name == 'workflow_run'
+        if: inputs.snapshot-run-id != ''
         shell: bash
         run: |
           snapshots=(downloaded-snapshot/*.csv)
@@ -76,7 +72,7 @@ jobs:
           python publish_package.py --snapshot "${snapshots[0]}"
 
       - name: Fetch fresh rates, build and validate distributions
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.snapshot-run-id == ''
         env:
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
         run: python publish_package.py

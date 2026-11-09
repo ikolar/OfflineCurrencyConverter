@@ -108,3 +108,15 @@ jobs:
           fi
           git commit -m "Update exchange rates $(date -u +%Y-%m-%d)"
           git push
+
+  publish-pypi:
+    needs: update-rates
+    if: github.ref_name == github.event.repository.default_branch
+    uses: ./.github/workflows/publish-pypi.yml
+    with:
+      snapshot-run-id: ${{ github.run_id }}
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    secrets: inherit
