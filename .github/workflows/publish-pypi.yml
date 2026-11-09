@@ -2,9 +2,14 @@ name: Publish Python package to PyPI
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Update ECB + crypto rates"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: publish-pypi
@@ -13,12 +18,20 @@ concurrency:
 jobs:
   build:
     # Only publish code from the repository's default branch.
-    if: github.ref_name == github.event.repository.default_branch
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,6 +49,7 @@ jobs:
         run: python -m unittest discover -v
 
       - name: Restore ECB downloads
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/cache@v4
         with:
           path: .cache/ecb
@@ -43,7 +57,26 @@ jobs:
           restore-keys: |
             ecb-zip-v1-${{ runner.os }}-
 
+      - name: Download the successful update's snapshot
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: rates-snapshot
+          path: downloaded-snapshot/
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Build and validate the updated snapshot
+        if: github.event_name == 'workflow_run'
+        shell: bash
+        run: |
+          snapshots=(downloaded-snapshot/*.csv)
+          [[ ${#snapshots[@]} -eq 1 && -f "${snapshots[0]}" ]]
+          python publish_package.py --snapshot "${snapshots[0]}"
+
       - name: Fetch fresh rates, build and validate distributions
+        if: github.event_name == 'workflow_dispatch'
         env:
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
         run: python publish_package.py
@@ -82,3 +115,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: publish-dist/
+          skip-existing: true

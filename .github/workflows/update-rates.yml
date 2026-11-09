@@ -77,6 +77,26 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Select snapshot for PyPI publication
+        id: snapshot
+        run: |
+          python - <<'PYTHON'
+          import os
+          from pathlib import Path
+          from publish_package import latest_snapshot
+          snapshot = latest_snapshot(Path("output"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"path={snapshot}\n")
+          PYTHON
+
+      - name: Save snapshot for PyPI publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: rates-snapshot
+          path: ${{ steps.snapshot.outputs.path }}
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Commit dated snapshot
         run: |
           git config user.name "rates-bot"

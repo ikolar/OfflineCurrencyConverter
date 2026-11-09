@@ -72,3 +72,37 @@ class PackagingTests(unittest.TestCase):
                         main(['--output-dir', str(output), '--dist-dir', str(root / 'dist')])
                     self.assertEqual(run.call_count, 1)
                     stage.assert_not_called()
+
+
+class ExistingSnapshotTests(unittest.TestCase):
+    def test_exact_snapshot_is_packaged_without_fetching(self):
+        from publish_package import main
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshot = root / 'eurofxref_and_crypto_rates.2026.11.03.csv'
+            snapshot.write_text('Date,USD\n2026-11-02,2\n')
+            dist = root / 'dist'
+
+            def build_artifacts(command, **kwargs):
+                if command[2] == 'build':
+                    destination = Path(command[command.index('--outdir') + 1])
+                    destination.mkdir(parents=True)
+                    (destination / 'test.whl').touch()
+                    (destination / 'test.tar.gz').touch()
+
+            with patch('publish_package.subprocess.run', side_effect=build_artifacts) as run, patch('publish_package.stage_package', return_value='2026.11.03') as stage:
+                self.assertEqual(main(['--snapshot', str(snapshot), '--dist-dir', str(dist)]), 0)
+                self.assertEqual(stage.call_args.args[1:3], (snapshot.resolve(), date(2026, 11, 3)))
+                self.assertEqual([call.args[0][2] for call in run.call_args_list], ['build', 'twine'])
+                self.assertTrue((dist / '2026.11.03' / 'test.whl').exists())
+
+    def test_error_snapshot_prevents_build_without_fetching(self):
+        from publish_package import main
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshot = root / 'eurofxref_and_crypto_rates.2026.11.03.csv'
+            snapshot.write_text('Date,USD\n2026-11-02,ERROR\n')
+            with patch('publish_package.subprocess.run') as run:
+                with self.assertRaisesRegex(RuntimeError, 'download errors'):
+                    main(['--snapshot', str(snapshot), '--dist-dir', str(root / 'dist')])
+                run.assert_not_called()

@@ -32,7 +32,12 @@ A scheduled GitHub Action generates updated data and a wheel daily at
 16:30 Europe/Amsterdam. Successful builds are committed to [`output/`](output/)
 and made available as workflow artifacts. Versions follow the snapshot date:
 `2026.11.9` identifies the November 9, 2026 snapshot. Publication to public PyPI
-is a separate, manually triggered workflow.
+runs automatically immediately after a successful rate update. The publishing
+workflow builds and validates the exact CSV artifact from that update, without
+fetching the data again. Failed updates or snapshots containing `ERROR` cells do
+not publish. Already uploaded distributions are skipped safely on reruns.
+The publishing workflow can also be triggered manually to fetch fresh rates.
+Snapshot handoff artifacts are retained for seven days; PyPI releases are retained.
 
 Fiat observations may be absent on weekends and holidays. Missing or failed
 source observations remain unavailable until a subsequent update obtains them.

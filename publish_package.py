@@ -50,6 +50,7 @@ def stage_package(destination: Path, snapshot: Path, release_date: date, revisio
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--snapshot", type=Path, help="Build a previously generated snapshot without fetching; version defaults to its date")
     parser.add_argument("--publish", action="store_true", help="Upload checked artifacts to PyPI")
     parser.add_argument("--no-isolation", action="store_true", help="Use already installed build tooling instead of an isolated environment")
     parser.add_argument("--repository", choices=["pypi", "testpypi"], default="pypi")
@@ -57,21 +58,31 @@ def main(argv=None) -> int:
     parser.add_argument("--output-dir", type=Path, default=ROOT / "output", help="Directory containing rate CSV snapshots")
     parser.add_argument("--dist-dir", type=Path, default=ROOT / "dist")
     args = parser.parse_args(argv)
-    release_date = args.date or datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+    if args.snapshot:
+        snapshot = args.snapshot.resolve(strict=True)
+        match = re.fullmatch(rf"{PREFIX}\.(\d{{4}})\.(\d{{2}})\.(\d{{2}})\.csv", snapshot.name)
+        if not match:
+            parser.error("--snapshot must be a dated rate CSV snapshot")
+        snapshot_date = date(*map(int, match.groups()))
+        release_date = args.date or snapshot_date
+    else:
+        release_date = args.date or datetime.now(ZoneInfo("Europe/Amsterdam")).date()
     destination = args.dist_dir.resolve() / release_date.strftime("%Y.%m.%d")
     # Never upload old artifacts or accidentally replace a prior build.
     if destination.exists():
         parser.error(f"Build directory already exists: {destination}; use a fresh --dist-dir")
-    # Fetching is mandatory: never silently package an old snapshot after failure.
-    fetch_date = datetime.now(ZoneInfo("Europe/Amsterdam")).date()
-    subprocess.run([
-        sys.executable, "-m", "offline_currency_converter", "--output-dir", str(args.output_dir.resolve()),
-        "--run-date", fetch_date.isoformat(),
-    ], cwd=ROOT, check=True)
-    snapshot = latest_snapshot(args.output_dir.resolve())
-    expected_name = f"{PREFIX}.{fetch_date.strftime('%Y.%m.%d')}.csv"
-    if snapshot.name != expected_name:
-        raise RuntimeError(f"Fetcher did not produce today's snapshot: {expected_name}")
+    if not args.snapshot:
+        # Manual releases fetch fresh data; automatic releases use the exact
+        # artifact from the successful update rather than downloading twice.
+        fetch_date = datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+        subprocess.run([
+            sys.executable, "-m", "offline_currency_converter", "--output-dir", str(args.output_dir.resolve()),
+            "--run-date", fetch_date.isoformat(),
+        ], cwd=ROOT, check=True)
+        snapshot = latest_snapshot(args.output_dir.resolve())
+        expected_name = f"{PREFIX}.{fetch_date.strftime('%Y.%m.%d')}.csv"
+        if snapshot.name != expected_name:
+            raise RuntimeError(f"Fetcher did not produce today's snapshot: {expected_name}")
     # The fetcher can finish successfully while recording individual download
     # failures as ERROR cells. Those are failed refreshes for release purposes.
     with snapshot.open(newline="", encoding="utf-8-sig") as stream:
